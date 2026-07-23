@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="6">
+<meta name="app-version" content="7">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -295,6 +295,8 @@
     background: none; border: none; color: var(--critical);
     font-family: inherit; font-size: 11.5px; cursor: pointer; padding: 0 2px; text-decoration: underline;
   }
+  .ai-state a { color: var(--accent); }
+  #sh-provider-row { margin-top: 0; margin-bottom: 8px; }
   .ai-model-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); }
   .ai-model-row select {
     flex: 1; min-height: 34px; border: 1px solid var(--hairline); border-radius: 8px;
@@ -375,7 +377,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v6</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v7</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -572,8 +574,15 @@
     </div>
 
     <div class="ai-box">
+      <div class="ai-model-row" id="sh-provider-row">
+        <span>AI</span>
+        <select id="sh-provider" aria-label="AI 공급자 선택">
+          <option value="gemini">Gemini API — 무료 키 가능</option>
+          <option value="claude">Claude API — 유료</option>
+        </select>
+      </div>
       <div class="ai-row">
-        <input type="password" id="sh-key" placeholder="Anthropic API 키 (선택 — 없으면 수동 모드)" autocomplete="off">
+        <input type="password" id="sh-key" placeholder="API 키 (선택 — 없으면 수동 모드)" autocomplete="off">
         <button class="key-btn" id="sh-key-save" type="button">저장</button>
       </div>
       <div class="ai-state" id="sh-key-state"></div>
@@ -1677,14 +1686,16 @@
   //  프로젝트 3: 쇼츠썰 (Claude 생성)
   // ═════════════════════════════════════════════
   var ANTHROPIC_BASE = "https://api.anthropic.com";
+  var GEMINI_BASE = "https://generativelanguage.googleapis.com";
   var DEFAULT_MODEL = "claude-haiku-4-5";
+  var DEFAULT_GEMINI = "gemini-2.5-flash";
   var COMMON_SYS =
     "너는 유튜브 쇼츠/썰 채널의 전속 작가다. 규칙: (1) 모든 이야기는 100% 픽션이며 도입에 굳이 픽션 고지는 쓰지 않는다. " +
     "(2) 실존 인물·기업·지역 비방, 혐오·차별, 성적 묘사, 잔혹한 폭력 묘사는 금지한다. " +
     "(3) 유튜브 커뮤니티 가이드에 안전한 수위에서, 시청자가 끝까지 보게 만드는 자극적이고 반전 있는 전개를 쓴다. " +
     "(4) 반드시 요청된 JSON 형식으로만 응답하고 JSON 밖에 다른 텍스트를 쓰지 않는다.";
 
-  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKey: "" };
+  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKeys: { claude: "", gemini: "" }, memProvider: "" };
   var shStatus = statusCtl("sh-status");
   var shflow = flowCtl({
     pre: "sh",
@@ -1692,22 +1703,30 @@
     labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트" }
   });
 
-  // ── API 키/모델 설정 ──
-  function getKey() { return lsGet("ad_claude_key") || shstate.memKey || ""; }
-  function maskKey(k) { return k.length > 10 ? k.slice(0, 7) + "…" + k.slice(-4) : "저장된 키"; }
+  // ── AI 공급자/키/모델 설정 ──
+  function getProvider() { return lsGet("ad_ai_provider") || shstate.memProvider || "gemini"; }
+  function keyName() { return getProvider() === "claude" ? "ad_claude_key" : "ad_gemini_key"; }
+  function modelName() { return getProvider() === "claude" ? "ad_claude_model" : "ad_gemini_model"; }
+  function getKey() { return lsGet(keyName()) || shstate.memKeys[getProvider()] || ""; }
+  function maskKey(k) { return k.length > 10 ? k.slice(0, 6) + "…" + k.slice(-4) : "저장된 키"; }
   function renderKeyState() {
-    var k = getKey(), s = el("sh-key-state");
+    var p = getProvider(), k = getKey(), s = el("sh-key-state");
+    el("sh-key").placeholder = p === "claude"
+      ? "Anthropic API 키 (sk-ant-…)"
+      : "Gemini API 키 (AIza…)";
     if (k) {
       s.innerHTML = "🔑 " + esc(maskKey(k)) + " 저장됨 — 버튼만 누르면 자동 생성됩니다 <button type=\"button\" id=\"sh-key-del\">삭제</button>";
       var d = document.getElementById("sh-key-del");
       if (d) d.addEventListener("click", function () {
-        try { localStorage.removeItem("ad_claude_key"); } catch (e) {}
-        shstate.memKey = "";
+        try { localStorage.removeItem(keyName()); } catch (e) {}
+        shstate.memKeys[p] = "";
         el("sh-model-row").hidden = true;
         renderKeyState();
       });
     } else {
-      s.textContent = "키 없음 — 수동 모드(프롬프트 복사 → Claude 앱 → 답변 붙여넣기)로 사용할 수 있어요";
+      s.innerHTML = p === "claude"
+        ? "키 없음 — 수동 모드로 사용 가능 · 키 발급(유료): <a href=\"https://console.anthropic.com\" target=\"_blank\" rel=\"noopener\">console.anthropic.com</a>"
+        : "키 없음 — 수동 모드로 사용 가능 · 무료 키 발급: <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">aistudio.google.com/apikey</a>";
       el("sh-model-row").hidden = true;
     }
   }
@@ -1736,43 +1755,84 @@
       .then(function (d) { if (timer) clearTimeout(timer); return d; },
             function (e) { if (timer) clearTimeout(timer); throw e; });
   }
-  function loadModels() {
-    anthropicFetch("/v1/models?limit=100", { method: "GET" }, null, 20000)
-      .then(function (d) {
-        var list = (d && d.data) || [];
-        if (!list.length) return;
-        var sel = el("sh-model");
-        sel.innerHTML = "";
-        list.forEach(function (m) {
-          var o = document.createElement("option");
-          o.value = m.id;
-          o.textContent = m.display_name || m.id;
-          sel.appendChild(o);
+  function geminiFetch(path, init, timeoutMs) {
+    var use = ("AbortController" in window) ? new AbortController() : null;
+    var timer = use && setTimeout(function () { use.abort(); }, timeoutMs || 120000);
+    init = init || {};
+    init.headers = Object.assign({ "content-type": "application/json", "x-goog-api-key": getKey() }, init.headers || {});
+    if (use) init.signal = use.signal;
+    return fetch(GEMINI_BASE + path, init)
+      .then(function (res) {
+        return res.json()["catch"](function () { return {}; }).then(function (j) {
+          if (!res.ok) {
+            var msg = (j && j.error && j.error.message) || ("HTTP " + res.status);
+            var e = new Error(msg); e.status = res.status; throw e;
+          }
+          return j;
         });
-        var saved = lsGet("ad_claude_model");
-        var pick = saved && list.some(function (m) { return m.id === saved; }) ? saved
-          : (list.filter(function (m) { return /haiku/i.test(m.id); })[0] || list[0]).id;
-        sel.value = pick;
-        lsSet("ad_claude_model", pick);
-        sel.addEventListener("change", function () { lsSet("ad_claude_model", sel.value); });
-        el("sh-model-row").hidden = false;
-      })["catch"](function () {
-        shStatus("모델 목록을 못 불러왔어요 — 기본 모델로 동작합니다");
-      });
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function fillModelSelect(list, savedKey, prefer) {
+    var sel = el("sh-model");
+    sel.innerHTML = "";
+    list.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m.id; o.textContent = m.label;
+      sel.appendChild(o);
+    });
+    var saved = lsGet(savedKey);
+    var pick = saved && list.some(function (m) { return m.id === saved; }) ? saved
+      : (list.filter(function (m) { return prefer.test(m.id); })[0] || list[0]).id;
+    sel.value = pick;
+    lsSet(savedKey, pick);
+    sel.onchange = function () { lsSet(savedKey, sel.value); };
+    el("sh-model-row").hidden = false;
+  }
+  function loadModels() {
+    if (getProvider() === "claude") {
+      anthropicFetch("/v1/models?limit=100", { method: "GET" }, null, 20000)
+        .then(function (d) {
+          var list = ((d && d.data) || []).map(function (m) { return { id: m.id, label: m.display_name || m.id }; });
+          if (list.length) fillModelSelect(list, "ad_claude_model", /haiku/i);
+        })["catch"](function () { shStatus("모델 목록을 못 불러왔어요 — 기본 모델로 동작합니다"); });
+    } else {
+      geminiFetch("/v1beta/models?pageSize=100", { method: "GET" }, 20000)
+        .then(function (d) {
+          var list = ((d && d.models) || []).filter(function (m) {
+            return /gemini/i.test(m.name || "") &&
+              ((m.supportedGenerationMethods || []).indexOf("generateContent") >= 0) &&
+              !/embedding|imagen|tts|audio|image|live/i.test(m.name);
+          }).map(function (m) {
+            var id = String(m.name || "").replace(/^models\//, "");
+            return { id: id, label: m.displayName || id };
+          });
+          if (list.length) fillModelSelect(list, "ad_gemini_model", /flash(?!.*lite)/i);
+        })["catch"](function () { shStatus("모델 목록을 못 불러왔어요 — 기본 모델로 동작합니다"); });
+    }
   }
   el("sh-key-save").addEventListener("click", function () {
     var v = el("sh-key").value.trim();
     if (!v) { shStatus("키를 입력한 뒤 저장을 누르세요 (키 없이도 수동 모드로 사용 가능)", true); return; }
-    lsSet("ad_claude_key", v);
-    if (!lsGet("ad_claude_key")) shstate.memKey = v; // 저장 불가 환경이면 메모리에만
+    lsSet(keyName(), v);
+    if (!lsGet(keyName())) shstate.memKeys[getProvider()] = v; // 저장 불가 환경이면 메모리에만
     el("sh-key").value = "";
     renderKeyState();
     shStatus("키 저장 완료 — 모델 목록을 불러오는 중…");
     loadModels();
   });
+  el("sh-provider").value = getProvider();
+  el("sh-provider").addEventListener("change", function () {
+    shstate.memProvider = el("sh-provider").value;
+    lsSet("ad_ai_provider", el("sh-provider").value);
+    renderKeyState();
+    if (getKey()) loadModels(); else el("sh-model-row").hidden = true;
+  });
   function curModel() {
     var sel = el("sh-model");
-    return (!el("sh-model-row").hidden && sel.value) || lsGet("ad_claude_model") || DEFAULT_MODEL;
+    if (!el("sh-model-row").hidden && sel.value) return sel.value;
+    return lsGet(modelName()) || (getProvider() === "claude" ? DEFAULT_MODEL : DEFAULT_GEMINI);
   }
 
   // ── 생성 호출/파싱 ──
@@ -1792,13 +1852,33 @@
       return parseClaudeJson(text);
     });
   }
+  function geminiGen(sys, user, maxTokens) {
+    return geminiFetch("/v1beta/models/" + encodeURIComponent(curModel()) + ":generateContent", {
+      method: "POST",
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: maxTokens, responseMimeType: "application/json" }
+      })
+    }).then(function (d) {
+      var cand = (d && d.candidates && d.candidates[0]) || {};
+      var text = ((cand.content && cand.content.parts) || []).map(function (p) { return p.text || ""; }).join("");
+      return parseClaudeJson(text);
+    });
+  }
+  function genCall(sys, user, maxTokens) {
+    return getProvider() === "claude" ? claudeGen(sys, user, maxTokens) : geminiGen(sys, user, maxTokens);
+  }
   function aiErrMsg(e) {
-    if (e && e.message === "JSON_PARSE") return "생성 결과를 읽지 못했어요 — 다시 실행해 보세요";
+    var m = (e && e.message) || "";
+    if (m === "JSON_PARSE") return "생성 결과를 읽지 못했어요 — 다시 실행해 보세요";
     if (e && e.status === 401) return "API 키가 올바르지 않아요 — 키를 확인해 주세요";
-    if (e && e.status === 429) return "요청이 많아요 — 잠시 후 다시 시도해 주세요";
-    if (e && (e.status === 529 || e.status === 503)) return "Claude 서버가 혼잡해요 — 잠시 후 다시 시도해 주세요";
+    if (e && e.status === 400 && /api key/i.test(m)) return "API 키가 올바르지 않아요 — 키를 확인해 주세요";
+    if (e && e.status === 403) return "키 권한이 없어요 — 새 키를 발급해 보세요";
+    if (e && e.status === 429) return "요청/무료 한도를 넘었어요 — 잠시 후 다시 시도해 주세요";
+    if (e && (e.status === 529 || e.status === 503)) return "AI 서버가 혼잡해요 — 잠시 후 다시 시도해 주세요";
     if (e && e.name === "AbortError") return "응답이 없어요 — 다시 실행해 보세요";
-    return "생성에 실패했어요" + (e && e.message ? " (" + e.message + ")" : "") + " — 다시 실행해 보세요";
+    return "생성에 실패했어요" + (m ? " (" + m + ")" : "") + " — 다시 실행해 보세요";
   }
 
   // ── 프롬프트 구성 ──
@@ -1899,7 +1979,7 @@
     hideManual(n);
     shflow.setLoading(n, true);
     shStatus(loadingMsg);
-    claudeGen(COMMON_SYS, user, maxTok)
+    genCall(COMMON_SYS, user, maxTok)
       .then(function (obj) { handleResult(n, obj); })
       ["catch"](function (e) { shStatus(aiErrMsg(e), true); })
       .then(function () { shflow.setLoading(n, false); });
