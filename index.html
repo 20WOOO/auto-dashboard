@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="7">
+<meta name="app-version" content="8">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -320,6 +320,15 @@
   .story-card .sc-sum { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
   .story-card .sc-pick { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 6px; display: none; }
   .story-card.sel .sc-pick { display: block; }
+  .gen-live { border: 1px solid var(--hairline); border-radius: 11px; padding: 10px 12px; margin-top: 10px; }
+  .gl-head { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
+  .gl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease infinite; flex-shrink: 0; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  .gl-text {
+    max-height: 180px; overflow-y: auto; margin: 0;
+    font-family: inherit; font-size: 11.5px; line-height: 1.6;
+    color: var(--muted); white-space: pre-wrap; word-break: break-all;
+  }
   .manual-box { border: 1px dashed var(--hairline); border-radius: 12px; padding: 12px; margin-top: 10px; }
   .mb-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
   .mb-desc { font-size: 11.5px; color: var(--muted); line-height: 1.6; margin-bottom: 9px; }
@@ -377,7 +386,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v7</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v8</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -606,6 +615,10 @@
           <button class="step-start" id="shstart1" type="button">
             <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 1단계 시작 — 썰 5개 생성</span>
           </button>
+          <div class="gen-live" id="shlive1" hidden>
+            <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta1">실시간 생성 중…</span></div>
+            <pre class="gl-text" id="shlivetext1"></pre>
+          </div>
           <div class="manual-box" id="shmanual1" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
             <div class="mb-desc">① 아래 버튼으로 프롬프트 복사 → ② Claude 앱 새 대화에 붙여넣어 실행 → ③ 답변(JSON 전체)을 아래 칸에 붙여넣고 적용</div>
@@ -632,6 +645,10 @@
           <button class="step-start" id="shstart2" type="button">
             <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 2단계 시작 — 5분 대본</span>
           </button>
+          <div class="gen-live" id="shlive2" hidden>
+            <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta2">실시간 생성 중…</span></div>
+            <pre class="gl-text" id="shlivetext2"></pre>
+          </div>
           <div class="manual-box" id="shmanual2" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
             <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON 전체)을 붙여넣고 적용</div>
@@ -658,6 +675,10 @@
           <button class="step-start" id="shstart3" type="button">
             <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 3단계 시작 — 이미지 프롬프트</span>
           </button>
+          <div class="gen-live" id="shlive3" hidden>
+            <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta3">실시간 생성 중…</span></div>
+            <pre class="gl-text" id="shlivetext3"></pre>
+          </div>
           <div class="manual-box" id="shmanual3" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
             <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON 전체)을 붙여넣고 적용</div>
@@ -1842,17 +1863,16 @@
     if (a < 0 || b <= a) throw new Error("JSON_PARSE");
     return JSON.parse(t.slice(a, b + 1));
   }
-  function claudeGen(sys, user, maxTokens) {
+  function claudeGenText(sys, user, maxTokens) {
     return anthropicFetch("/v1/messages", {
       method: "POST",
       body: JSON.stringify({ model: curModel(), max_tokens: maxTokens, system: sys, messages: [{ role: "user", content: user }] })
     }).then(function (d) {
-      var text = ((d && d.content) || []).filter(function (b2) { return b2.type === "text"; })
+      return ((d && d.content) || []).filter(function (b2) { return b2.type === "text"; })
         .map(function (b2) { return b2.text; }).join("");
-      return parseClaudeJson(text);
     });
   }
-  function geminiGen(sys, user, maxTokens) {
+  function geminiGenText(sys, user, maxTokens) {
     return geminiFetch("/v1beta/models/" + encodeURIComponent(curModel()) + ":generateContent", {
       method: "POST",
       body: JSON.stringify({
@@ -1862,12 +1882,135 @@
       })
     }).then(function (d) {
       var cand = (d && d.candidates && d.candidates[0]) || {};
-      var text = ((cand.content && cand.content.parts) || []).map(function (p) { return p.text || ""; }).join("");
-      return parseClaudeJson(text);
+      return ((cand.content && cand.content.parts) || []).map(function (p) { return p.text || ""; }).join("");
     });
   }
-  function genCall(sys, user, maxTokens) {
-    return getProvider() === "claude" ? claudeGen(sys, user, maxTokens) : geminiGen(sys, user, maxTokens);
+  function genCallText(sys, user, maxTokens) {
+    return getProvider() === "claude" ? claudeGenText(sys, user, maxTokens) : geminiGenText(sys, user, maxTokens);
+  }
+
+  // ── 실시간 스트리밍 수신 ──
+  function readSSE(res, onPayload) {
+    var reader = res.body.getReader(), dec = new TextDecoder(), buf = "";
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) return;
+        buf += dec.decode(r.value, { stream: true });
+        var idx;
+        while ((idx = buf.indexOf("\n")) >= 0) {
+          var line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (line.indexOf("data:") === 0) {
+            var payload = line.slice(5).trim();
+            if (payload && payload !== "[DONE]") onPayload(payload);
+          }
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }
+  function streamFail(res) {
+    return res.json()["catch"](function () { return {}; }).then(function (j) {
+      var e = new Error((j && j.error && j.error.message) || ("HTTP " + res.status));
+      e.status = res.status;
+      throw e;
+    });
+  }
+  function claudeStreamText(sys, user, maxTokens, onDelta) {
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 180000);
+    var opt = {
+      method: "POST",
+      headers: {
+        "content-type": "application/json", "x-api-key": getKey(),
+        "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({ model: curModel(), max_tokens: maxTokens, stream: true, system: sys, messages: [{ role: "user", content: user }] })
+    };
+    if (ctrl) opt.signal = ctrl.signal;
+    return fetch(ANTHROPIC_BASE + "/v1/messages", opt)
+      .then(function (res) {
+        if (!res.ok) return streamFail(res);
+        if (!res.body || !res.body.getReader) throw new Error("NO_STREAM");
+        var out = "";
+        return readSSE(res, function (payload) {
+          var j;
+          try { j = JSON.parse(payload); } catch (e) { return; }
+          if (j.type === "content_block_delta" && j.delta && typeof j.delta.text === "string") {
+            out += j.delta.text; onDelta(j.delta.text);
+          }
+          if (j.type === "error") { var e2 = new Error((j.error && j.error.message) || "stream error"); throw e2; }
+        }).then(function () { return out; });
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function geminiStreamText(sys, user, maxTokens, onDelta) {
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 180000);
+    var opt = {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": getKey() },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: maxTokens, responseMimeType: "application/json" }
+      })
+    };
+    if (ctrl) opt.signal = ctrl.signal;
+    return fetch(GEMINI_BASE + "/v1beta/models/" + encodeURIComponent(curModel()) + ":streamGenerateContent?alt=sse", opt)
+      .then(function (res) {
+        if (!res.ok) return streamFail(res);
+        if (!res.body || !res.body.getReader) throw new Error("NO_STREAM");
+        var out = "";
+        return readSSE(res, function (payload) {
+          var j;
+          try { j = JSON.parse(payload); } catch (e) { return; }
+          if (j.error) { var e2 = new Error(j.error.message || "stream error"); e2.status = j.error.code; throw e2; }
+          var cand = (j.candidates && j.candidates[0]) || {};
+          ((cand.content && cand.content.parts) || []).forEach(function (p) {
+            if (typeof p.text === "string" && p.text) { out += p.text; onDelta(p.text); }
+          });
+        }).then(function () { return out; });
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function genStreamText(sys, user, maxTokens, onDelta) {
+    var got = 0;
+    var count = function (t) { got += t.length; onDelta(t); };
+    var p = getProvider() === "claude"
+      ? claudeStreamText(sys, user, maxTokens, count)
+      : geminiStreamText(sys, user, maxTokens, count);
+    return p["catch"](function (e) {
+      if (e && (e.status === 401 || e.status === 403 || e.status === 429)) throw e; // 키·한도 문제는 그대로 보고
+      if (got > 0) throw e;                       // 수신 중 끊김 → 오류 표시
+      return genCallText(sys, user, maxTokens);   // 스트리밍 미지원/실패 → 일반 호출 폴백
+    });
+  }
+
+  // ── 실시간 표시 패널 ──
+  var liveTimers = {};
+  function startLive(n) {
+    var txt = el("shlivetext" + n), meta = el("shlivemeta" + n);
+    txt.textContent = "";
+    el("shlive" + n).hidden = false;
+    var t0 = Date.now();
+    meta.textContent = "실시간 생성 중 · 0초 · 0자 수신";
+    liveTimers[n] = setInterval(function () {
+      meta.textContent = "실시간 생성 중 · " + Math.round((Date.now() - t0) / 1000) + "초 · " +
+        txt.textContent.length.toLocaleString("ko-KR") + "자 수신";
+    }, 500);
+  }
+  function liveDelta(n, t) {
+    var txt = el("shlivetext" + n);
+    txt.textContent += t;
+    txt.scrollTop = txt.scrollHeight;
+  }
+  function stopLive(n) {
+    if (liveTimers[n]) { clearInterval(liveTimers[n]); liveTimers[n] = null; }
+    el("shlive" + n).hidden = true;
   }
   function aiErrMsg(e) {
     var m = (e && e.message) || "";
@@ -1979,10 +2122,11 @@
     hideManual(n);
     shflow.setLoading(n, true);
     shStatus(loadingMsg);
-    genCall(COMMON_SYS, user, maxTok)
-      .then(function (obj) { handleResult(n, obj); })
+    startLive(n);
+    genStreamText(COMMON_SYS, user, maxTok, function (t) { liveDelta(n, t); })
+      .then(function (text) { handleResult(n, parseClaudeJson(text)); })
       ["catch"](function (e) { shStatus(aiErrMsg(e), true); })
-      .then(function () { shflow.setLoading(n, false); });
+      .then(function () { stopLive(n); shflow.setLoading(n, false); });
   }
 
   function runSh1() {
