@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="12">
+<meta name="app-version" content="13">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -414,7 +414,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v12</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v13</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -2411,10 +2411,9 @@
   }
 
   // ── 텔레그램 완료 알림 ──
-  // 내장 봇(공개 저장소에 노출됨 — 문제 시 BotFather /revoke 후 아래 값 교체)
-  var DEFAULT_TG_TOKEN = "8816499887:AAGmQKtDMW67OxMkZLkCsbR-aCckx4qzQOg";
-  var DEFAULT_TG_NAME = "duddn9690_bot";
-  function tgTokenRaw() { return lsGet("ad_tg_token") || shstate.memKeys.tg || DEFAULT_TG_TOKEN; }
+  // 토큰은 코드에 저장하지 않음(공개 저장소 노출 방지). 브라우저 localStorage에만 보관.
+  var DEFAULT_TG_NAME = "duddn9690_bot"; // 봇 아이디(공개 정보) — 화면 안내용
+  function tgTokenRaw() { return lsGet("ad_tg_token") || shstate.memKeys.tg || ""; }
   function tgToken() { return lsGet("ad_tg_off") ? "" : tgTokenRaw(); }
   function tgChat() { return lsGet("ad_tg_chat") || ""; }
   function tgApi(token, method) { return "https://api.telegram.org/bot" + token + "/" + method; }
@@ -2443,9 +2442,9 @@
         shStatus("텔레그램 알림을 껐어요 — 다시 켜려면 연결을 누르세요");
       });
     } else if (token) {
-      s.innerHTML = "🔔 봇 <b>@" + esc(nm) + "</b> 준비됨 — 텔레그램에서 이 봇에게 아무 메시지나 한 번 보내면 자동 연결돼요 (안 되면 ‘연결’ 클릭)";
+      s.innerHTML = "🔔 봇 준비됨 — 텔레그램에서 <b>@" + esc(nm) + "</b> 에게 아무 메시지나 한 번 보내면 자동 연결돼요 (안 되면 ‘연결’ 클릭)";
     } else {
-      s.innerHTML = "봇 토큰을 넣고 연결하세요 · 봇 만들기: 텔레그램에서 <b>@BotFather</b> 검색 → <b>/newbot</b>";
+      s.innerHTML = "완료 알림을 받으려면 봇 토큰을 넣고 ‘연결’을 누르세요 · BotFather에서 발급한 토큰(숫자:영문). 이 토큰은 이 브라우저에만 저장되고 공개되지 않습니다.";
     }
   }
   function tgAutoResolve() {
