@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="5">
+<meta name="app-version" content="6">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -275,6 +275,78 @@
   .link-btn:hover { border-color: var(--accent); }
   .disclaim { font-size: 11px; color: var(--muted); margin-top: 10px; }
 
+  /* 쇼츠썰 */
+  .ai-box { border: 1px solid var(--hairline); border-radius: 12px; padding: 11px 12px; margin-bottom: 12px; }
+  .ai-row { display: flex; gap: 8px; }
+  .ai-row input {
+    flex: 1; min-width: 0; min-height: 42px;
+    border: 1px solid var(--hairline); border-radius: 10px;
+    background: var(--plane); color: var(--ink);
+    font-family: inherit; font-size: 14px; padding: 0 12px;
+  }
+  .ai-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .key-btn {
+    min-height: 42px; padding: 0 16px; border: none; border-radius: 10px;
+    background: var(--accent); color: #fff;
+    font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  .ai-state { font-size: 11.5px; color: var(--muted); margin-top: 7px; line-height: 1.6; }
+  .ai-state button {
+    background: none; border: none; color: var(--critical);
+    font-family: inherit; font-size: 11.5px; cursor: pointer; padding: 0 2px; text-decoration: underline;
+  }
+  .ai-model-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .ai-model-row select {
+    flex: 1; min-height: 34px; border: 1px solid var(--hairline); border-radius: 8px;
+    background: var(--plane); color: var(--ink); font-family: inherit; font-size: 12.5px; padding: 0 8px;
+  }
+  .kw-input {
+    width: 100%; min-height: 48px;
+    border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--plane); color: var(--ink);
+    font-family: inherit; font-size: 16px; padding: 0 14px;
+  }
+  .kw-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .kw-input::placeholder { color: var(--muted); }
+  .story-card {
+    display: block; width: 100%; text-align: left;
+    background: var(--tile); border: 1.5px solid transparent; border-radius: 12px;
+    padding: 12px 13px; margin-top: 8px; cursor: pointer; font-family: inherit;
+  }
+  .story-card.sel { border-color: var(--accent); }
+  .story-card .sc-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 5px; }
+  .story-card .sc-sum { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+  .story-card .sc-pick { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 6px; display: none; }
+  .story-card.sel .sc-pick { display: block; }
+  .manual-box { border: 1px dashed var(--hairline); border-radius: 12px; padding: 12px; margin-top: 10px; }
+  .mb-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .mb-desc { font-size: 11.5px; color: var(--muted); line-height: 1.6; margin-bottom: 9px; }
+  .manual-box textarea {
+    width: 100%; min-height: 96px;
+    border: 1px solid var(--hairline); border-radius: 10px;
+    background: var(--plane); color: var(--ink);
+    font-family: inherit; font-size: 13px; padding: 9px 11px; margin: 9px 0 9px; resize: vertical;
+  }
+  .mb-apply { min-height: 42px; margin-top: 0; }
+  .script-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 6px 0 4px; flex-wrap: wrap; }
+  .script-title { font-size: 15px; font-weight: 700; }
+  .script-meta { font-size: 11.5px; color: var(--muted); }
+  .scene { padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+  .scene:last-child { border-bottom: none; }
+  .scene-no { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .scene-tx { font-size: 13.5px; color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; }
+  .style-box { background: var(--tile); border-radius: 11px; padding: 10px 12px; font-size: 12px; color: var(--ink-2); line-height: 1.6; margin: 8px 0 4px; }
+  .prompt-card { border: 1px solid var(--hairline); border-radius: 11px; padding: 11px 12px; margin-top: 8px; }
+  .pc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .pc-no { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .pc-ko { font-size: 12px; color: var(--muted); margin-bottom: 6px; line-height: 1.5; }
+  .pc-en { font-size: 12px; color: var(--ink); background: var(--tile); border-radius: 8px; padding: 8px 10px; line-height: 1.55; word-break: break-word; }
+  .copy-mini {
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    color: var(--ink-2); font-family: inherit; font-size: 11px; padding: 4px 10px; cursor: pointer; flex-shrink: 0;
+  }
+  .copy-mini:hover { border-color: var(--accent); color: var(--accent); }
+
   .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
   .connector::after {
     content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
@@ -303,13 +375,14 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v5</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v6</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
   <nav class="tabs">
     <button class="tab active" id="tab-weather" type="button">🌦️ 날씨</button>
     <button class="tab" id="tab-stock" type="button">📈 주식</button>
+    <button class="tab" id="tab-shorts" type="button">🎬 쇼츠썰</button>
     <span class="tab ghost">＋</span>
   </nav>
 
@@ -491,6 +564,115 @@
     </div>
   </section>
 
+  <!-- ═══════════ 프로젝트: 쇼츠썰 ═══════════ -->
+  <section class="card proj" id="proj-shorts" hidden>
+    <div class="card-head">
+      <h2>🎬 쇼츠썰 자동화</h2>
+      <div class="stamp" id="sh-stamp">아직 실행 전</div>
+    </div>
+
+    <div class="ai-box">
+      <div class="ai-row">
+        <input type="password" id="sh-key" placeholder="Anthropic API 키 (선택 — 없으면 수동 모드)" autocomplete="off">
+        <button class="key-btn" id="sh-key-save" type="button">저장</button>
+      </div>
+      <div class="ai-state" id="sh-key-state"></div>
+      <div class="ai-model-row" id="sh-model-row" hidden>
+        <span>모델</span><select id="sh-model" aria-label="생성 모델 선택"></select>
+      </div>
+    </div>
+
+    <input class="kw-input" id="sh-kw" type="search" placeholder="썰 키워드 입력 (예: 시댁, 직장상사, 층간소음, 소개팅)"
+           autocomplete="off" enterkeyhint="go">
+    <div class="status" id="sh-status">키워드를 넣고 1단계 시작을 누르세요 · 모든 썰은 픽션으로 생성됩니다</div>
+
+    <div class="flow">
+      <section class="node" id="shnode1">
+        <button class="node-head" id="shhead1" type="button">
+          <span class="stepchip">1</span>
+          <div class="node-title">자극 썰 5개 생성 <span class="node-sub" id="shsub1"></span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="shstart1" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 1단계 시작 — 썰 5개 생성</span>
+          </button>
+          <div class="manual-box" id="shmanual1" hidden>
+            <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
+            <div class="mb-desc">① 아래 버튼으로 프롬프트 복사 → ② Claude 앱 새 대화에 붙여넣어 실행 → ③ 답변(JSON 전체)을 아래 칸에 붙여넣고 적용</div>
+            <button class="copy-mini" id="shcopy1" type="button">📋 프롬프트 복사</button>
+            <textarea id="shpaste1" placeholder="Claude 답변(JSON)을 그대로 붙여넣기"></textarea>
+            <button class="step-start mb-apply" id="shapply1" type="button"><span class="lbl">적용하기</span></button>
+          </div>
+          <div id="shcontent1" hidden>
+            <div id="sh-stories"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun1" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <section class="node locked" id="shnode2">
+        <button class="node-head" id="shhead2" type="button" aria-expanded="false">
+          <span class="stepchip">2</span>
+          <div class="node-title">5분 영상 대본 만들기 <span class="node-sub" id="shsub2">1단계에서 썰을 고르면 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="shstart2" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 2단계 시작 — 5분 대본</span>
+          </button>
+          <div class="manual-box" id="shmanual2" hidden>
+            <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
+            <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON 전체)을 붙여넣고 적용</div>
+            <button class="copy-mini" id="shcopy2" type="button">📋 프롬프트 복사</button>
+            <textarea id="shpaste2" placeholder="Claude 답변(JSON)을 그대로 붙여넣기"></textarea>
+            <button class="step-start mb-apply" id="shapply2" type="button"><span class="lbl">적용하기</span></button>
+          </div>
+          <div id="shcontent2" hidden>
+            <div id="sh-script"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun2" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <section class="node locked" id="shnode3">
+        <button class="node-head" id="shhead3" type="button" aria-expanded="false">
+          <span class="stepchip">3</span>
+          <div class="node-title">씬별 이미지 프롬프트 <span class="node-sub" id="shsub3">2단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="shstart3" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 3단계 시작 — 이미지 프롬프트</span>
+          </button>
+          <div class="manual-box" id="shmanual3" hidden>
+            <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
+            <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON 전체)을 붙여넣고 적용</div>
+            <button class="copy-mini" id="shcopy3" type="button">📋 프롬프트 복사</button>
+            <textarea id="shpaste3" placeholder="Claude 답변(JSON)을 그대로 붙여넣기"></textarea>
+            <button class="step-start mb-apply" id="shapply3" type="button"><span class="lbl">적용하기</span></button>
+          </div>
+          <div id="shcontent3" hidden>
+            <div id="sh-prompts"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun3" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+      <div class="ghost-node">＋ 4단계 — 예: TTS 나레이션 정리 · 썸네일 문구 · 해시태그 추천<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
+    </div>
+
+    <div class="card-foot">
+      <span>생성: Claude API (키는 이 브라우저에만 저장) 또는 수동 모드</span>
+      <span>모든 썰은 픽션입니다</span>
+    </div>
+  </section>
+
   <section class="ghost-card">
     ＋ 새 프로젝트 탭이 들어갈 자리 (예: 뉴스 브리핑, 환율, 할 일)<br>
     Claude에게 요청해 대시보드를 확장할 수 있습니다
@@ -605,16 +787,19 @@
   }
 
   // ═══════════ 탭 ═══════════
+  var PROJ_TABS = ["weather", "stock", "shorts"];
   function showTab(which) {
-    el("proj-weather").hidden = which !== "weather";
-    el("proj-stock").hidden = which !== "stock";
-    el("tab-weather").className = "tab" + (which === "weather" ? " active" : "");
-    el("tab-stock").className = "tab" + (which === "stock" ? " active" : "");
+    PROJ_TABS.forEach(function (p) {
+      el("proj-" + p).hidden = p !== which;
+      el("tab-" + p).className = "tab" + (p === which ? " active" : "");
+    });
     try { history.replaceState(null, "", "#" + which); } catch (e) {}
   }
-  el("tab-weather").addEventListener("click", function () { showTab("weather"); });
-  el("tab-stock").addEventListener("click", function () { showTab("stock"); });
+  PROJ_TABS.forEach(function (p) {
+    el("tab-" + p).addEventListener("click", function () { showTab(p); });
+  });
   if (location.hash === "#stock") showTab("stock");
+  else if (location.hash === "#shorts") showTab("shorts");
 
   // ═════════════════════════════════════════════
   //  프로젝트 1: 날씨
@@ -1487,6 +1672,351 @@
   sflow.setNode(2, "locked");
   sflow.setNode(3, "locked");
   renderRecent();
+
+  // ═════════════════════════════════════════════
+  //  프로젝트 3: 쇼츠썰 (Claude 생성)
+  // ═════════════════════════════════════════════
+  var ANTHROPIC_BASE = "https://api.anthropic.com";
+  var DEFAULT_MODEL = "claude-haiku-4-5";
+  var COMMON_SYS =
+    "너는 유튜브 쇼츠/썰 채널의 전속 작가다. 규칙: (1) 모든 이야기는 100% 픽션이며 도입에 굳이 픽션 고지는 쓰지 않는다. " +
+    "(2) 실존 인물·기업·지역 비방, 혐오·차별, 성적 묘사, 잔혹한 폭력 묘사는 금지한다. " +
+    "(3) 유튜브 커뮤니티 가이드에 안전한 수위에서, 시청자가 끝까지 보게 만드는 자극적이고 반전 있는 전개를 쓴다. " +
+    "(4) 반드시 요청된 JSON 형식으로만 응답하고 JSON 밖에 다른 텍스트를 쓰지 않는다.";
+
+  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKey: "" };
+  var shStatus = statusCtl("sh-status");
+  var shflow = flowCtl({
+    pre: "sh",
+    lock: { 1: "키워드 입력 후 시작할 수 있어요", 2: "1단계에서 썰을 고르면 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" },
+    labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트" }
+  });
+
+  // ── API 키/모델 설정 ──
+  function getKey() { return lsGet("ad_claude_key") || shstate.memKey || ""; }
+  function maskKey(k) { return k.length > 10 ? k.slice(0, 7) + "…" + k.slice(-4) : "저장된 키"; }
+  function renderKeyState() {
+    var k = getKey(), s = el("sh-key-state");
+    if (k) {
+      s.innerHTML = "🔑 " + esc(maskKey(k)) + " 저장됨 — 버튼만 누르면 자동 생성됩니다 <button type=\"button\" id=\"sh-key-del\">삭제</button>";
+      var d = document.getElementById("sh-key-del");
+      if (d) d.addEventListener("click", function () {
+        try { localStorage.removeItem("ad_claude_key"); } catch (e) {}
+        shstate.memKey = "";
+        el("sh-model-row").hidden = true;
+        renderKeyState();
+      });
+    } else {
+      s.textContent = "키 없음 — 수동 모드(프롬프트 복사 → Claude 앱 → 답변 붙여넣기)로 사용할 수 있어요";
+      el("sh-model-row").hidden = true;
+    }
+  }
+  function anthropicFetch(path, init, ctrl, timeoutMs) {
+    var own = !ctrl && ("AbortController" in window) ? new AbortController() : null;
+    var use = ctrl || own;
+    var timer = use && setTimeout(function () { use.abort(); }, timeoutMs || 120000);
+    init = init || {};
+    init.headers = Object.assign({
+      "content-type": "application/json",
+      "x-api-key": getKey(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    }, init.headers || {});
+    if (use) init.signal = use.signal;
+    return fetch(ANTHROPIC_BASE + path, init)
+      .then(function (res) {
+        return res.json()["catch"](function () { return {}; }).then(function (j) {
+          if (!res.ok) {
+            var msg = (j && j.error && j.error.message) || ("HTTP " + res.status);
+            var e = new Error(msg); e.status = res.status; throw e;
+          }
+          return j;
+        });
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function loadModels() {
+    anthropicFetch("/v1/models?limit=100", { method: "GET" }, null, 20000)
+      .then(function (d) {
+        var list = (d && d.data) || [];
+        if (!list.length) return;
+        var sel = el("sh-model");
+        sel.innerHTML = "";
+        list.forEach(function (m) {
+          var o = document.createElement("option");
+          o.value = m.id;
+          o.textContent = m.display_name || m.id;
+          sel.appendChild(o);
+        });
+        var saved = lsGet("ad_claude_model");
+        var pick = saved && list.some(function (m) { return m.id === saved; }) ? saved
+          : (list.filter(function (m) { return /haiku/i.test(m.id); })[0] || list[0]).id;
+        sel.value = pick;
+        lsSet("ad_claude_model", pick);
+        sel.addEventListener("change", function () { lsSet("ad_claude_model", sel.value); });
+        el("sh-model-row").hidden = false;
+      })["catch"](function () {
+        shStatus("모델 목록을 못 불러왔어요 — 기본 모델로 동작합니다");
+      });
+  }
+  el("sh-key-save").addEventListener("click", function () {
+    var v = el("sh-key").value.trim();
+    if (!v) { shStatus("키를 입력한 뒤 저장을 누르세요 (키 없이도 수동 모드로 사용 가능)", true); return; }
+    lsSet("ad_claude_key", v);
+    if (!lsGet("ad_claude_key")) shstate.memKey = v; // 저장 불가 환경이면 메모리에만
+    el("sh-key").value = "";
+    renderKeyState();
+    shStatus("키 저장 완료 — 모델 목록을 불러오는 중…");
+    loadModels();
+  });
+  function curModel() {
+    var sel = el("sh-model");
+    return (!el("sh-model-row").hidden && sel.value) || lsGet("ad_claude_model") || DEFAULT_MODEL;
+  }
+
+  // ── 생성 호출/파싱 ──
+  function parseClaudeJson(text) {
+    var t = String(text || "").trim().replace(/```json/gi, "```").replace(/```/g, "");
+    var a = t.indexOf("{"), b = t.lastIndexOf("}");
+    if (a < 0 || b <= a) throw new Error("JSON_PARSE");
+    return JSON.parse(t.slice(a, b + 1));
+  }
+  function claudeGen(sys, user, maxTokens) {
+    return anthropicFetch("/v1/messages", {
+      method: "POST",
+      body: JSON.stringify({ model: curModel(), max_tokens: maxTokens, system: sys, messages: [{ role: "user", content: user }] })
+    }).then(function (d) {
+      var text = ((d && d.content) || []).filter(function (b2) { return b2.type === "text"; })
+        .map(function (b2) { return b2.text; }).join("");
+      return parseClaudeJson(text);
+    });
+  }
+  function aiErrMsg(e) {
+    if (e && e.message === "JSON_PARSE") return "생성 결과를 읽지 못했어요 — 다시 실행해 보세요";
+    if (e && e.status === 401) return "API 키가 올바르지 않아요 — 키를 확인해 주세요";
+    if (e && e.status === 429) return "요청이 많아요 — 잠시 후 다시 시도해 주세요";
+    if (e && (e.status === 529 || e.status === 503)) return "Claude 서버가 혼잡해요 — 잠시 후 다시 시도해 주세요";
+    if (e && e.name === "AbortError") return "응답이 없어요 — 다시 실행해 보세요";
+    return "생성에 실패했어요" + (e && e.message ? " (" + e.message + ")" : "") + " — 다시 실행해 보세요";
+  }
+
+  // ── 프롬프트 구성 ──
+  function buildP1(kw) {
+    return "키워드: \"" + kw + "\"\n" +
+      "이 키워드로 유튜브 쇼츠썰 아이디어 5개를 만들어라. 각 썰은 서로 다른 상황·전개여야 한다.\n" +
+      "각 항목: title(호기심을 강하게 자극하는 제목, 25자 이내), summary(3~4문장 줄거리 요약. 기승전결이 느껴지고 반전 포인트가 드러나야 함).\n" +
+      "JSON 형식으로만 답하라: {\"stories\":[{\"title\":\"...\",\"summary\":\"...\"}]} (정확히 5개)";
+  }
+  function buildP2(story) {
+    return "아래 썰을 5분 분량 유튜브 영상 나레이션 대본으로 발전시켜라.\n" +
+      "제목: " + story.title + "\n줄거리: " + story.summary + "\n" +
+      "요구사항: 1인칭 구어체 나레이션('~했는데요', '~더라고요' 톤), 첫 문장은 강한 후킹, 총 2,000~2,600자, " +
+      "8~12개의 씬으로 나누고 각 씬은 시각적으로 상상 가능한 하나의 장면이어야 한다. 마지막 씬은 반전 또는 여운으로 마무리.\n" +
+      "JSON 형식으로만 답하라: {\"title\":\"영상 제목\",\"scenes\":[{\"no\":1,\"heading\":\"씬 소제목\",\"narration\":\"해당 씬 나레이션\"}]}";
+  }
+  function buildP3(script) {
+    var sceneList = script.scenes.map(function (s) {
+      return s.no + ". [" + (s.heading || "") + "] " + String(s.narration || "").slice(0, 200);
+    }).join("\n");
+    return "아래 유튜브 썰 영상 대본의 각 씬에 어울리는 AI 이미지 생성 프롬프트를 만들어라.\n" +
+      "요구사항: 모든 씬에 일관된 스타일(예: 감성적인 한국 웹툰풍 일러스트)을 정해 style에 쓰고, " +
+      "각 씬마다 ko(한국어 장면 설명 1문장)와 en(영어 이미지 프롬프트 1개: 인물·구도·조명·분위기·스타일 포함, 이미지 안 텍스트 금지, 실존인물 금지)을 작성하라.\n" +
+      "대본 제목: " + script.title + "\n씬 목록:\n" + sceneList + "\n" +
+      "JSON 형식으로만 답하라: {\"style\":\"공통 스타일 설명\",\"prompts\":[{\"no\":1,\"ko\":\"...\",\"en\":\"...\"}]}";
+  }
+  function manualText(user) {
+    return COMMON_SYS + "\n\n---\n\n" + user + "\n\n(중요: 반드시 JSON만 출력하고 다른 설명은 쓰지 마라)";
+  }
+
+  // ── 복사 유틸 ──
+  function copyText(t, btn) {
+    function done(ok) {
+      if (!btn) return;
+      var old = btn.textContent;
+      btn.textContent = ok ? "복사됨 ✓" : "복사 실패";
+      setTimeout(function () { btn.textContent = old; }, 1500);
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(false); });
+      else {
+        var ta = document.createElement("textarea");
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta); done(ok);
+      }
+    } catch (e) { done(false); }
+  }
+
+  // ── 단계 공통 처리 ──
+  var shPending = { 1: null, 2: null, 3: null }; // 수동 모드용 프롬프트 보관
+  function hideManual(n) { el("shmanual" + n).hidden = true; }
+  function openManual(n, userPrompt) {
+    shPending[n] = manualText(userPrompt);
+    el("shpaste" + n).value = "";
+    el("shmanual" + n).hidden = false;
+    shStatus("API 키가 없어 수동 모드로 진행해요 — 프롬프트를 복사해 Claude 앱에서 실행하세요");
+  }
+  function handleResult(n, obj) {
+    if (n === 1) {
+      if (!obj || !obj.stories || !obj.stories.length) throw new Error("JSON_PARSE");
+      shstate.stories = obj.stories.slice(0, 5);
+      shstate.sel = -1;
+      shstate.script = null; shstate.prompts = null;
+      renderStories();
+      hideManual(1);
+      shflow.setNode(1, "done");
+      shflow.setNode(2, "locked");
+      shflow.setNode(3, "locked");
+      stampNow("sh-stamp");
+      shStatus("✓ 썰 5개 생성 완료 — 마음에 드는 썰을 하나 골라주세요");
+    } else if (n === 2) {
+      if (!obj || !obj.scenes || !obj.scenes.length) throw new Error("JSON_PARSE");
+      shstate.script = { title: obj.title || shstate.stories[shstate.sel].title, scenes: obj.scenes };
+      renderScript();
+      hideManual(2);
+      shflow.setNode(2, "done");
+      if (!shflow.isDone(3)) shflow.setNode(3, "ready");
+      stampNow("sh-stamp");
+      shStatus("✓ 2단계 완료 — 3단계에서 씬별 이미지 프롬프트를 만들어보세요");
+    } else {
+      if (!obj || !obj.prompts || !obj.prompts.length) throw new Error("JSON_PARSE");
+      shstate.prompts = { style: obj.style || "", prompts: obj.prompts };
+      renderPrompts();
+      hideManual(3);
+      shflow.setNode(3, "done");
+      stampNow("sh-stamp");
+      shStatus("✓ 3단계 완료 — 프롬프트를 복사해 이미지 생성 툴에 붙여넣으세요");
+    }
+  }
+  function runShStep(n, userPromptFn, maxTok, loadingMsg) {
+    if (shflow.isLocked(n) || shflow.busy(n)) return;
+    var user;
+    try { user = userPromptFn(); } catch (e) { return; }
+    if (user === null) return;
+    if (!getKey()) { openManual(n, user); return; }
+    hideManual(n);
+    shflow.setLoading(n, true);
+    shStatus(loadingMsg);
+    claudeGen(COMMON_SYS, user, maxTok)
+      .then(function (obj) { handleResult(n, obj); })
+      ["catch"](function (e) { shStatus(aiErrMsg(e), true); })
+      .then(function () { shflow.setLoading(n, false); });
+  }
+
+  function runSh1() {
+    var kw = el("sh-kw").value.trim();
+    if (!kw) { shStatus("먼저 썰 키워드를 입력해 주세요 (예: 시댁, 직장상사)", true); return; }
+    shstate.kw = kw;
+    runShStep(1, function () { return buildP1(kw); }, 2000, "‘" + kw + "’ 썰 5개를 생성하는 중… (10~30초)");
+  }
+  function runSh2() {
+    if (shstate.sel < 0 || !shstate.stories[shstate.sel]) { shStatus("1단계에서 썰을 먼저 골라주세요", true); return; }
+    runShStep(2, function () { return buildP2(shstate.stories[shstate.sel]); }, 4000, "5분 대본을 작성하는 중… (30초~1분)");
+  }
+  function runSh3() {
+    if (!shstate.script) { shStatus("2단계 대본을 먼저 만들어주세요", true); return; }
+    runShStep(3, function () { return buildP3(shstate.script); }, 3000, "씬별 이미지 프롬프트를 만드는 중… (20~40초)");
+  }
+
+  // ── 렌더 ──
+  function renderStories() {
+    var box = el("sh-stories");
+    box.innerHTML = "";
+    shstate.stories.forEach(function (s, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "story-card" + (i === shstate.sel ? " sel" : "");
+      b.innerHTML = '<div class="sc-title">' + (i + 1) + ". " + esc(s.title) + "</div>" +
+        '<div class="sc-sum">' + esc(s.summary) + "</div>" +
+        '<div class="sc-pick">✓ 선택됨 — 2단계에서 이 썰로 대본을 만듭니다</div>';
+      b.addEventListener("click", function () { selectStory(i); });
+      box.appendChild(b);
+    });
+  }
+  function selectStory(i) {
+    shstate.sel = i;
+    shstate.script = null; shstate.prompts = null;
+    var kids = el("sh-stories").querySelectorAll(".story-card");
+    for (var k = 0; k < kids.length; k++) kids[k].className = "story-card" + (k === i ? " sel" : "");
+    shflow.setNode(2, "ready");
+    shflow.setNode(3, "locked");
+    hideManual(2); hideManual(3);
+    shStatus("‘" + shstate.stories[i].title + "’ 선택 — 2단계 시작을 누르세요");
+  }
+  function scriptFullText() {
+    return shstate.script.title + "\n\n" + shstate.script.scenes.map(function (s) {
+      return "[씬 " + s.no + (s.heading ? " · " + s.heading : "") + "]\n" + s.narration;
+    }).join("\n\n");
+  }
+  function renderScript() {
+    var sc = shstate.script;
+    var chars = sc.scenes.reduce(function (a, s) { return a + String(s.narration || "").length; }, 0);
+    var mins = Math.round(chars / 330 * 10) / 10;
+    el("sh-script").innerHTML =
+      '<div class="script-head"><span class="script-title">' + esc(sc.title) + "</span>" +
+        '<button class="copy-mini" id="sh-copy-script" type="button">📋 전체 대본 복사</button></div>' +
+      '<div class="script-meta">총 ' + chars.toLocaleString("ko-KR") + "자 · 나레이션 약 " + mins + "분 분량 · 씬 " + sc.scenes.length + "개</div>" +
+      sc.scenes.map(function (s) {
+        return '<div class="scene"><div class="scene-no">씬 ' + esc(s.no) + (s.heading ? " · " + esc(s.heading) : "") + "</div>" +
+          '<div class="scene-tx">' + esc(s.narration) + "</div></div>";
+      }).join("");
+    document.getElementById("sh-copy-script").addEventListener("click", function () {
+      copyText(scriptFullText(), this);
+    });
+  }
+  function renderPrompts() {
+    var p = shstate.prompts;
+    var all = p.prompts.map(function (x) { return "씬 " + x.no + ": " + x.en; }).join("\n\n");
+    el("sh-prompts").innerHTML =
+      (p.style ? '<div class="style-box">🎨 공통 스타일: ' + esc(p.style) + "</div>" : "") +
+      '<div class="rerun-row" style="justify-content:flex-start;margin:6px 0 0"><button class="copy-mini" id="sh-copy-all" type="button">📋 전체 프롬프트 복사</button></div>' +
+      p.prompts.map(function (x, i) {
+        return '<div class="prompt-card"><div class="pc-head"><span class="pc-no">씬 ' + esc(x.no) + "</span>" +
+          '<button class="copy-mini sh-copy-one" data-i="' + i + '" type="button">복사</button></div>' +
+          (x.ko ? '<div class="pc-ko">' + esc(x.ko) + "</div>" : "") +
+          '<div class="pc-en">' + esc(x.en) + "</div></div>";
+      }).join("");
+    document.getElementById("sh-copy-all").addEventListener("click", function () { copyText(all, this); });
+    var ones = el("sh-prompts").querySelectorAll(".sh-copy-one");
+    for (var i = 0; i < ones.length; i++) {
+      (function (btn) {
+        btn.addEventListener("click", function () { copyText(p.prompts[Number(btn.getAttribute("data-i"))].en, btn); });
+      })(ones[i]);
+    }
+  }
+
+  // ── 수동 모드 바인딩 ──
+  [1, 2, 3].forEach(function (n) {
+    el("shcopy" + n).addEventListener("click", function () { copyText(shPending[n] || "", this); });
+    el("shapply" + n).addEventListener("click", function () {
+      try {
+        var obj = parseClaudeJson(el("shpaste" + n).value);
+        handleResult(n, obj);
+      } catch (e) {
+        shStatus("붙여넣은 내용에서 JSON을 읽지 못했어요 — Claude 답변 전체를 그대로 붙여넣어 주세요", true);
+      }
+    });
+  });
+
+  el("shstart1").addEventListener("click", runSh1);
+  el("shstart2").addEventListener("click", runSh2);
+  el("shstart3").addEventListener("click", runSh3);
+  el("shrerun1").addEventListener("click", runSh1);
+  el("shrerun2").addEventListener("click", runSh2);
+  el("shrerun3").addEventListener("click", runSh3);
+  shflow.bindHead(1, runSh1);
+  shflow.bindHead(2, runSh2);
+  shflow.bindHead(3, runSh3);
+  el("sh-kw").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); runSh1(); }
+  });
+  shflow.setNode(1, "ready");
+  shflow.setNode(2, "locked");
+  shflow.setNode(3, "locked");
+  renderKeyState();
+  if (getKey()) loadModels();
 })();
 </script>
 </body>
