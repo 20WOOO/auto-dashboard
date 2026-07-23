@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
-<meta name="description" content="위치를 검색하면 현재 날씨 → 주간 예보 → 내일 옷차림까지 단계적으로 실행되는 자동화 대시보드">
+<meta name="description" content="동네를 검색하면 현재 날씨 → 주간 예보 → 내일 옷차림까지 단계별 시작 버튼으로 실행되는 자동화 대시보드">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -23,6 +23,7 @@
     --accent-press: #256abf;
     --critical: #d03b3b;
     --tile: rgba(11, 11, 11, 0.025);
+    --shadow: 0 8px 24px rgba(11, 11, 11, 0.12);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -39,9 +40,11 @@
       --accent-press: #2a78d6;
       --critical: #e66767;
       --tile: rgba(255, 255, 255, 0.035);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     background: var(--plane);
@@ -70,47 +73,38 @@
   .card-head h2 { font-size: 16px; font-weight: 700; }
   .card-head .stamp { font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
 
-  /* ── 검색줄 ───────────────────────── */
-  .search-row { display: flex; gap: 8px; }
-  .search-row input {
-    flex: 1; min-width: 0; min-height: 48px;
+  /* ── 검색 + 자동완성 ─────────────────── */
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    width: 100%; min-height: 48px;
     border: 1px solid var(--hairline); border-radius: 12px;
     background: var(--plane); color: var(--ink);
     font-family: inherit; font-size: 16px; padding: 0 14px;
   }
-  .search-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-  .search-row input::placeholder { color: var(--muted); }
-  .run-btn {
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-    min-height: 48px; padding: 0 18px; flex-shrink: 0;
-    border: none; border-radius: 12px;
-    background: var(--accent); color: #ffffff;
-    font-family: inherit; font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: filter 0.15s ease;
+  .search-wrap input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .search-wrap input::placeholder { color: var(--muted); }
+  .suggest {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow); z-index: 30; overflow: hidden;
+    max-height: 288px; overflow-y: auto;
   }
-  .run-btn:hover { filter: brightness(1.06); }
-  .run-btn:active { background: var(--accent-press); }
-  .run-btn:disabled { opacity: 0.55; cursor: default; }
-  .run-btn .spinner {
-    width: 14px; height: 14px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
-    animation: spin 0.8s linear infinite; display: none;
+  .suggest.show { display: block; }
+  .sug-item {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    padding: 10px 14px; border-bottom: 1px solid var(--hairline);
   }
-  .run-btn.loading .spinner { display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .sug-item:last-child { border-bottom: none; }
+  .sug-item:hover, .sug-item.active { background: var(--tile); }
+  .sug-item .s-name { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .sug-item .s-region { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .sug-empty { padding: 12px 14px; font-size: 13px; color: var(--muted); text-align: center; }
 
-  .status { min-height: 18px; margin-top: 9px; font-size: 13px; color: var(--muted); text-align: center; }
+  .picked { margin-top: 9px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); text-align: center; }
+  .picked .default-tag { font-weight: 400; color: var(--muted); }
+  .status { min-height: 18px; margin-top: 4px; font-size: 12.5px; color: var(--muted); text-align: center; }
   .status.error { color: var(--critical); font-weight: 600; }
-
-  .alt-chips { display: none; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
-  .alt-chips.show { display: flex; }
-  .alt-chips .hint { font-size: 12px; color: var(--muted); width: 100%; text-align: center; margin-bottom: 2px; }
-  .chip {
-    border: 1px solid var(--hairline); border-radius: 999px;
-    background: none; color: var(--ink-2);
-    font-family: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
-  }
-  .chip.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
   /* ── 순서도(플로우) ───────────────── */
   .flow { margin-top: 16px; }
@@ -127,8 +121,7 @@
     background: none; border: none; cursor: pointer;
     font-family: inherit; text-align: left; color: var(--ink);
   }
-  .node-head[disabled] { cursor: default; }
-  .node.static .node-head { cursor: default; }
+  .node.locked .node-head { cursor: default; }
   .stepchip {
     width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
@@ -139,20 +132,39 @@
   .node-title { font-size: 14.5px; font-weight: 700; flex: 1; }
   .node.locked .node-title { color: var(--muted); font-weight: 600; }
   .node-sub { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 1px; }
-  .chev { color: var(--muted); font-size: 12px; transition: transform 0.2s ease; flex-shrink: 0; }
+  .chev { color: var(--muted); font-size: 12px; transition: transform 0.2s ease; flex-shrink: 0; visibility: hidden; }
+  .node.done .chev { visibility: visible; }
   .node.open .chev { transform: rotate(180deg); }
-  .node.locked .chev { opacity: 0.5; }
   .node-body { display: none; padding: 2px 14px 16px; }
   .node.open .node-body { display: block; animation: fadein 0.25s ease; }
   @keyframes fadein { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .node.open .node-body, .chev { animation: none; transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .node.open .node-body { animation: none; } .chev { transition: none; } }
 
-  .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
-  .connector::after {
-    content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
-    border-left: 5px solid transparent; border-right: 5px solid transparent;
-    border-top: 6px solid var(--hairline);
+  .step-start {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 48px; margin-top: 6px;
+    border: none; border-radius: 11px;
+    background: var(--accent); color: #ffffff;
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: filter 0.15s ease;
   }
+  .step-start:hover { filter: brightness(1.06); }
+  .step-start:active { background: var(--accent-press); }
+  .step-start:disabled { opacity: 0.55; cursor: default; }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+    animation: spin 0.8s linear infinite; display: none;
+  }
+  .step-start.loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .rerun-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .rerun {
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: 12px; color: var(--muted); padding: 4px 2px;
+  }
+  .rerun:hover { color: var(--accent); }
 
   /* 1단계: 현재 날씨 */
   .date-line { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 4px; }
@@ -200,6 +212,13 @@
   .otips { display: flex; flex-direction: column; gap: 5px; }
   .otip { font-size: 12.5px; color: var(--ink-2); }
 
+  .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
+  .connector::after {
+    content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid var(--hairline);
+  }
+
   .ghost-node {
     border: 1px dashed var(--hairline); border-radius: 14px;
     padding: 13px 14px; text-align: center;
@@ -209,7 +228,7 @@
   .card-foot {
     margin-top: 16px; padding-top: 11px;
     border-top: 1px solid var(--hairline);
-    display: flex; justify-content: space-between; gap: 12px;
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
     font-size: 11px; color: var(--muted);
   }
   .card-foot a { color: var(--muted); }
@@ -225,7 +244,7 @@
 <div class="wrap">
   <header class="page">
     <h1>⚡ 자동화 대시보드</h1>
-    <p>위치를 검색하고, 단계를 눌러 확장하세요</p>
+    <p>동네를 검색해 선택하고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
   <section class="card">
@@ -234,41 +253,45 @@
       <div class="stamp" id="stamp">아직 실행 전</div>
     </div>
 
-    <div class="search-row">
-      <input id="loc-input" type="search" placeholder="도시·장소 입력 (예: 서울, 부산, Tokyo)"
-             autocomplete="off" enterkeyhint="go">
-      <button class="run-btn" id="run-btn" type="button">
-        <span class="spinner" aria-hidden="true"></span>
-        <span id="run-label">▶ 시작</span>
-      </button>
+    <div class="search-wrap">
+      <input id="loc-input" type="search" placeholder="동네·도시 검색 — 입력하면 바로 목록이 떠요"
+             autocomplete="off" enterkeyhint="search" aria-label="위치 검색">
+      <div class="suggest" id="suggest" role="listbox"></div>
     </div>
-    <div class="status" id="status">위치를 입력하고 시작을 누르세요 (비워두면 서울)</div>
-    <div class="alt-chips" id="alt-chips"></div>
+    <div class="picked" id="picked">📍 서울 <span class="default-tag">· 기본 위치</span></div>
+    <div class="status" id="status">다른 동네로 바꾸려면 위에서 검색하세요 (동·구 단위 가능)</div>
 
     <div class="flow">
 
       <!-- 1단계: 현재 날씨 -->
-      <section class="node static open" id="node1">
-        <div class="node-head">
+      <section class="node" id="node1">
+        <button class="node-head" id="head1" type="button">
           <span class="stepchip">1</span>
-          <div class="node-title">현재 날씨 <span class="node-sub" id="place-name">위치 미지정</span></div>
-        </div>
+          <div class="node-title">현재 날씨 <span class="node-sub" id="sub1"></span></div>
+          <span class="chev">▼</span>
+        </button>
         <div class="node-body">
-          <div class="date-line" id="date-line">&nbsp;</div>
-          <div class="hero">
-            <div class="icon" id="w-icon">—</div>
-            <div>
-              <span class="temp" id="w-temp">—</span>
-              <div class="cond" id="w-cond">대기 중</div>
+          <button class="step-start" id="start1" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 1단계 시작 — 현재 날씨</span>
+          </button>
+          <div id="content1" hidden>
+            <div class="date-line" id="date-line">&nbsp;</div>
+            <div class="hero">
+              <div class="icon" id="w-icon">—</div>
+              <div>
+                <span class="temp" id="w-temp">—</span>
+                <div class="cond" id="w-cond">대기 중</div>
+              </div>
             </div>
-          </div>
-          <div class="tiles">
-            <div class="tile"><div class="label">체감온도</div><div class="value" id="w-feel">—</div></div>
-            <div class="tile"><div class="label">습도</div><div class="value" id="w-humid">—</div></div>
-            <div class="tile"><div class="label">바람</div><div class="value" id="w-wind">—</div></div>
-            <div class="tile"><div class="label">오늘 최고</div><div class="value" id="w-max">—</div></div>
-            <div class="tile"><div class="label">오늘 최저</div><div class="value" id="w-min">—</div></div>
-            <div class="tile"><div class="label">강수확률</div><div class="value" id="w-pop">—</div></div>
+            <div class="tiles">
+              <div class="tile"><div class="label">체감온도</div><div class="value" id="w-feel">—</div></div>
+              <div class="tile"><div class="label">습도</div><div class="value" id="w-humid">—</div></div>
+              <div class="tile"><div class="label">바람</div><div class="value" id="w-wind">—</div></div>
+              <div class="tile"><div class="label">오늘 최고</div><div class="value" id="w-max">—</div></div>
+              <div class="tile"><div class="label">오늘 최저</div><div class="value" id="w-min">—</div></div>
+              <div class="tile"><div class="label">강수확률</div><div class="value" id="w-pop">—</div></div>
+            </div>
+            <div class="rerun-row"><button class="rerun" id="rerun1" type="button">🔄 이 단계 다시 실행</button></div>
           </div>
         </div>
       </section>
@@ -277,24 +300,40 @@
 
       <!-- 2단계: 주간 예보 -->
       <section class="node locked" id="node2">
-        <button class="node-head" id="head2" type="button" disabled aria-expanded="false">
+        <button class="node-head" id="head2" type="button" aria-expanded="false">
           <span class="stepchip">2</span>
-          <div class="node-title">1주일 예상 날씨 <span class="node-sub" id="sub2">1단계 실행 후 열 수 있어요</span></div>
+          <div class="node-title">1주일 예상 날씨 <span class="node-sub" id="sub2">1단계 완료 후 시작할 수 있어요</span></div>
           <span class="chev">▼</span>
         </button>
-        <div class="node-body" id="week-body"></div>
+        <div class="node-body">
+          <button class="step-start" id="start2" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 2단계 시작 — 1주일 예보</span>
+          </button>
+          <div id="content2" hidden>
+            <div id="week-body"></div>
+            <div class="rerun-row"><button class="rerun" id="rerun2" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
       </section>
 
       <div class="connector"></div>
 
       <!-- 3단계: 내일 옷차림 -->
       <section class="node locked" id="node3">
-        <button class="node-head" id="head3" type="button" disabled aria-expanded="false">
+        <button class="node-head" id="head3" type="button" aria-expanded="false">
           <span class="stepchip">3</span>
-          <div class="node-title">내일 옷차림 추천 <span class="node-sub" id="sub3">2단계를 먼저 열어보세요</span></div>
+          <div class="node-title">내일 옷차림 추천 <span class="node-sub" id="sub3">2단계 완료 후 시작할 수 있어요</span></div>
           <span class="chev">▼</span>
         </button>
-        <div class="node-body" id="outfit-body"></div>
+        <div class="node-body">
+          <button class="step-start" id="start3" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 3단계 시작 — 옷차림 추천</span>
+          </button>
+          <div id="content3" hidden>
+            <div id="outfit-body"></div>
+            <div class="rerun-row"><button class="rerun" id="rerun3" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
       </section>
 
       <div class="connector"></div>
@@ -303,8 +342,8 @@
     </div>
 
     <div class="card-foot">
-      <span id="coord-line">위치 검색 · 날씨 예보</span>
-      <span>데이터: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></span>
+      <span id="coord-line">위치 검색: OpenStreetMap</span>
+      <span>날씨: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></span>
     </div>
   </section>
 
@@ -319,10 +358,10 @@
   "use strict";
 
   // ── API ──────────────────────────────────────────────
-  var GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
+  var PHOTON_URL = "https://photon.komoot.io/api/";          // 자동완성(OSM 기반, 동/구 단위)
+  var OM_GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"; // 예비 검색
   var FC_URL = "https://api.open-meteo.com/v1/forecast";
 
-  // WMO weather code → [설명, 낮 아이콘, 밤 아이콘]
   var WMO = {
     0:  ["맑음", "☀️", "🌙"],
     1:  ["대체로 맑음", "🌤️", "🌙"],
@@ -342,25 +381,28 @@
   var DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
   // ── 상태 ─────────────────────────────────────────────
-  var state = { place: null, data: null, hasRun: false };
+  var state = {
+    place: { name: "서울", region: "대한민국", latitude: 37.5665, longitude: 126.978, isDefault: true },
+    cur: null,   // 1단계 응답
+    week: null   // 2단계 응답
+  };
+  var sug = { items: [], active: -1, timer: null, ctrl: null };
 
   var input = document.getElementById("loc-input");
-  var btn = document.getElementById("run-btn");
-  var runLabel = document.getElementById("run-label");
+  var sugEl = document.getElementById("suggest");
   var statusEl = document.getElementById("status");
   var stamp = document.getElementById("stamp");
-  var chipsEl = document.getElementById("alt-chips");
 
   function el(id) { return document.getElementById(id); }
   function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
   function arr(a, i) { return (a && a.length > i) ? num(a[i]) : null; }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) {
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
   }); }
   function deg(v) { return v === null ? "—" : Math.round(v) + '<span class="unit">°</span>'; }
   function wmo(code) { return (code !== null && WMO[code]) || ["정보 없음", "🌡️", "🌡️"]; }
+  function hasHangul(s) { return /[ㄱ-ㆎ가-힣]/.test(s); }
 
-  // "2026-07-24" → {w:"금", md:"7.24"} (문자열만 사용, 시간대 문제 없음)
   function dateParts(ds) {
     var p = (ds || "").split("-").map(Number);
     if (p.length < 3 || !p[0]) return { w: "?", md: "?" };
@@ -368,10 +410,11 @@
     return { w: DAYS[d.getUTCDay()], md: p[1] + "." + p[2] };
   }
 
-  function fetchJson(url) {
-    var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 12000);
-    return fetch(url, ctrl ? { signal: ctrl.signal } : {})
+  function fetchJson(url, ctrl) {
+    var own = !ctrl && ("AbortController" in window) ? new AbortController() : null;
+    var use = ctrl || own;
+    var timer = use && setTimeout(function () { use.abort(); }, 12000);
+    return fetch(url, use ? { signal: use.signal } : {})
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
@@ -380,107 +423,225 @@
             function (e) { if (timer) clearTimeout(timer); throw e; });
   }
 
-  function setLoading(on) {
-    btn.disabled = on;
-    btn.classList.toggle("loading", on);
-    runLabel.textContent = on ? "실행 중…" : (state.hasRun ? "🔄 실행" : "▶ 시작");
-  }
   function setStatus(msg, isError) {
     statusEl.className = isError ? "status error" : "status";
     statusEl.textContent = msg;
   }
 
-  // ── 위치 검색(지오코딩) ───────────────────────────────
-  function placeLabel(r) {
-    var extra = r.admin1 && r.admin1 !== r.name ? r.admin1 : (r.country || "");
-    return r.name + (extra ? " · " + extra : "");
+  // ── 자동완성 ─────────────────────────────────────────
+  function photonToPlaces(d) {
+    var seen = {}, out = [];
+    ((d && d.features) || []).forEach(function (f) {
+      var p = f.properties || {};
+      var g = (f.geometry && f.geometry.coordinates) || [];
+      var lon = num(g[0]), lat = num(g[1]);
+      if (lat === null || lon === null || !p.name) return;
+      var parts = [p.district, p.city || p.county, p.state, p.country]
+        .filter(function (x) { return x && x !== p.name; });
+      var region = parts.filter(function (x, i) { return parts.indexOf(x) === i; }).slice(0, 3).join(" · ");
+      var key = p.name + "|" + region;
+      if (seen[key]) return;
+      seen[key] = 1;
+      out.push({ name: p.name, region: region, latitude: lat, longitude: lon });
+    });
+    return out.slice(0, 6);
   }
 
-  function geocode(q) {
-    var url = GEO_URL + "?name=" + encodeURIComponent(q) + "&count=4&language=ko&format=json";
-    return fetchJson(url).then(function (d) {
-      var rs = (d && d.results) || [];
-      if (!rs.length) throw new Error("NO_PLACE");
-      return rs;
+  function omToPlaces(d) {
+    return ((d && d.results) || []).map(function (r) {
+      var parts = [r.admin1, r.country].filter(function (x) { return x && x !== r.name; });
+      return { name: r.name, region: parts.join(" · "), latitude: r.latitude, longitude: r.longitude };
     });
   }
 
-  function renderChips(results, chosen) {
-    chipsEl.innerHTML = "";
-    if (!results || results.length < 2) { chipsEl.className = "alt-chips"; return; }
-    var hint = document.createElement("div");
-    hint.className = "hint";
-    hint.textContent = "찾은 위치 — 다른 곳이면 눌러서 변경";
-    chipsEl.appendChild(hint);
-    results.forEach(function (r) {
+  function searchPlaces(q, ctrl) {
+    var url = PHOTON_URL + "?q=" + encodeURIComponent(q) + "&limit=6" + (hasHangul(q) ? "" : "&lang=en");
+    return fetchJson(url, ctrl).then(photonToPlaces).then(function (places) {
+      if (places.length) return places;
+      // Photon에서 못 찾으면 Open-Meteo 지오코딩으로 한 번 더
+      return fetchJson(OM_GEO_URL + "?name=" + encodeURIComponent(q) + "&count=5&language=ko&format=json")
+        .then(omToPlaces)["catch"](function () { return []; });
+    });
+  }
+
+  function hideSuggest() { sugEl.className = "suggest"; sugEl.innerHTML = ""; sug.items = []; sug.active = -1; }
+
+  function renderSuggest(places, emptyMsg) {
+    sug.items = places; sug.active = -1;
+    sugEl.innerHTML = "";
+    if (!places.length) {
+      if (emptyMsg) {
+        sugEl.innerHTML = '<div class="sug-empty">' + esc(emptyMsg) + "</div>";
+        sugEl.className = "suggest show";
+      } else hideSuggest();
+      return;
+    }
+    places.forEach(function (p, i) {
       var b = document.createElement("button");
       b.type = "button";
-      b.className = "chip" + (r === chosen ? " active" : "");
-      b.textContent = placeLabel(r);
-      b.addEventListener("click", function () { run(r, results); });
-      chipsEl.appendChild(b);
+      b.className = "sug-item";
+      b.setAttribute("role", "option");
+      b.innerHTML = '<div class="s-name">📍 ' + esc(p.name) + '</div>' +
+        (p.region ? '<div class="s-region">' + esc(p.region) + "</div>" : "");
+      // blur보다 먼저 처리되도록 pointerdown 사용
+      b.addEventListener("pointerdown", function (e) { e.preventDefault(); pick(p); });
+      b.addEventListener("click", function (e) { e.preventDefault(); pick(p); });
+      sugEl.appendChild(b);
     });
-    chipsEl.className = "alt-chips show";
+    sugEl.className = "suggest show";
   }
 
-  // ── 실행 파이프라인 ──────────────────────────────────
-  function run(directPlace, keepResults) {
-    setLoading(true);
-    var q = (input.value || "").trim() || "서울";
+  function markActive() {
+    var kids = sugEl.querySelectorAll(".sug-item");
+    for (var i = 0; i < kids.length; i++) kids[i].className = "sug-item" + (i === sug.active ? " active" : "");
+  }
 
-    var placeP = directPlace
-      ? Promise.resolve({ place: directPlace, results: keepResults || null })
-      : (setStatus("‘" + q + "’ 위치를 찾는 중…"),
-         geocode(q).then(function (rs) { return { place: rs[0], results: rs }; }));
+  input.addEventListener("input", function () {
+    var q = input.value.trim();
+    if (sug.timer) clearTimeout(sug.timer);
+    if (sug.ctrl) { sug.ctrl.abort(); sug.ctrl = null; }
+    if (q.length < 2) { hideSuggest(); return; }
+    sug.timer = setTimeout(function () {
+      var ctrl = ("AbortController" in window) ? new AbortController() : null;
+      sug.ctrl = ctrl;
+      searchPlaces(q, ctrl)
+        .then(function (places) {
+          if (input.value.trim() !== q) return; // 오래된 응답 무시
+          renderSuggest(places, "‘" + q + "’ 검색 결과가 없어요 — 조금 더 길게 입력해 보세요");
+        })["catch"](function (e) {
+          if (e && e.name === "AbortError") return;
+          renderSuggest([], "검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요");
+        });
+    }, 280);
+  });
 
-    placeP
-      .then(function (pr) {
-        state.place = pr.place;
-        renderChips(pr.results, pr.place);
-        setStatus(placeLabel(pr.place) + " 날씨를 불러오는 중…");
-        var url = FC_URL +
-          "?latitude=" + pr.place.latitude + "&longitude=" + pr.place.longitude +
-          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
-          "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
-          "&timezone=auto&forecast_days=7";
-        return fetchJson(url);
-      })
-      .then(function (data) {
-        if (!data || !data.current) throw new Error("bad payload");
-        state.data = data;
-        state.hasRun = true;
-        renderStep1();
-        unlock(2);
-        if (el("node2").classList.contains("open")) renderStep2();
-        if (el("node3").classList.contains("open")) renderStep3();
-        stamp.textContent = "마지막 업데이트 " +
-          new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
-        setStatus("✓ 업데이트 완료 — 2단계를 눌러 예보를 펼쳐보세요");
-      })
-      .catch(function (err) {
-        if (err && err.message === "NO_PLACE")
-          setStatus("‘" + q + "’ 위치를 찾지 못했습니다. 다른 이름으로 검색해 보세요.", true);
-        else if (err && err.name === "AbortError")
-          setStatus("응답이 없습니다. 잠시 후 다시 시도해 주세요.", true);
-        else
-          setStatus("불러오지 못했습니다. 네트워크 확인 후 다시 시도해 주세요.", true);
-      })
-      .then(function () { setLoading(false); });
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!sug.items.length) return;
+      e.preventDefault();
+      var d = e.key === "ArrowDown" ? 1 : -1;
+      sug.active = (sug.active + d + sug.items.length) % sug.items.length;
+      markActive();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (sug.items.length) pick(sug.items[sug.active >= 0 ? sug.active : 0]);
+      else if (input.value.trim().length >= 2) {
+        var q = input.value.trim();
+        setStatus("‘" + q + "’ 위치를 찾는 중…");
+        searchPlaces(q).then(function (places) {
+          if (places.length) pick(places[0]);
+          else setStatus("‘" + q + "’ 위치를 찾지 못했어요 — 다른 표기로 검색해 보세요", true);
+        })["catch"](function () { setStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
+      }
+    } else if (e.key === "Escape") hideSuggest();
+  });
+
+  input.addEventListener("blur", function () { setTimeout(hideSuggest, 150); });
+
+  // ── 위치 선택 → 단계 리셋 ────────────────────────────
+  function placeLabel(p) { return p.name + (p.region ? " · " + p.region : ""); }
+
+  function pick(p) {
+    state.place = p;
+    state.cur = null;
+    state.week = null;
+    hideSuggest();
+    input.value = "";
+    input.blur();
+    el("picked").innerHTML = "📍 " + esc(placeLabel(p));
+    el("coord-line").textContent = "위치: " + placeLabel(p) +
+      " (" + (Math.round(p.latitude * 100) / 100) + ", " + (Math.round(p.longitude * 100) / 100) + ")";
+    setStatus("위치가 설정됐어요 — 1단계 시작을 누르세요");
+    stamp.textContent = "아직 실행 전";
+    setNode(1, "ready");
+    setNode(2, "locked");
+    setNode(3, "locked");
+  }
+
+  // ── 단계 상태 기계 ───────────────────────────────────
+  // 상태: locked(잠김) / ready(시작 대기) / done(완료·펼침/접힘)
+  var LOCK_MSG = { 1: "위치 선택 후 시작할 수 있어요", 2: "1단계 완료 후 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" };
+
+  function setNode(n, st) {
+    var node = el("node" + n), start = el("start" + n), content = el("content" + n), sub = el("sub" + n);
+    node.classList.remove("locked", "open", "done");
+    if (st === "locked") {
+      node.classList.add("locked");
+      sub.textContent = LOCK_MSG[n];
+      start.hidden = false; content.hidden = true;
+    } else if (st === "ready") {
+      node.classList.add("open");
+      sub.textContent = "시작 버튼을 누르세요";
+      start.hidden = false; content.hidden = true;
+    } else { // done
+      node.classList.add("open", "done");
+      sub.textContent = "";
+      start.hidden = true; content.hidden = false;
+    }
+  }
+
+  function isDone(n) { return el("node" + n).classList.contains("done"); }
+  function isLocked(n) { return el("node" + n).classList.contains("locked"); }
+
+  function setLoading(n, on) {
+    var b = el("start" + n);
+    b.disabled = on;
+    b.classList.toggle("loading", on);
+    b.querySelector(".lbl").textContent = on ? "실행 중…" :
+      (n === 1 ? "▶ 1단계 시작 — 현재 날씨" : n === 2 ? "▶ 2단계 시작 — 1주일 예보" : "▶ 3단계 시작 — 옷차림 추천");
+  }
+
+  function stampNow() {
+    stamp.textContent = "마지막 업데이트 " +
+      new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+  }
+
+  // head 클릭: done이면 접기/펼치기, ready면 시작과 동일
+  function bindHead(n, runFn) {
+    el("head" + n).addEventListener("click", function () {
+      if (isLocked(n)) return;
+      var node = el("node" + n);
+      if (isDone(n)) {
+        node.classList.toggle("open");
+        el("head" + n).setAttribute("aria-expanded", node.classList.contains("open") ? "true" : "false");
+      } else runFn();
+    });
   }
 
   // ── 1단계: 현재 날씨 ─────────────────────────────────
-  function renderStep1() {
-    var cur = state.data.current || {};
-    var daily = state.data.daily || {};
-    var w = wmo(num(cur.weather_code));
-    var feel = num(cur.apparent_temperature);
-    var t = num(cur.temperature_2m);
-    var humid = num(cur.relative_humidity_2m);
-    var wind = num(cur.wind_speed_10m);
+  function runStep1() {
+    if (isLocked(1) || el("start1").disabled) return;
+    setLoading(1, true);
+    setStatus(state.place.name + " 현재 날씨를 불러오는 중…");
+    var url = FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+      "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
+      "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+      "&timezone=auto&forecast_days=1";
+    fetchJson(url)
+      .then(function (data) {
+        if (!data || !data.current) throw new Error("bad payload");
+        state.cur = data;
+        renderStep1();
+        setNode(1, "done");
+        if (!isDone(2)) setNode(2, "ready");
+        stampNow();
+        setStatus("✓ 1단계 완료 — 2단계 시작을 눌러보세요");
+      })["catch"](function (err) {
+        setStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
+          : "현재 날씨를 불러오지 못했어요 — 네트워크를 확인해 주세요", true);
+      })
+      .then(function () { setLoading(1, false); });
+  }
 
-    el("place-name").textContent = placeLabel(state.place);
+  function renderStep1() {
+    var cur = state.cur.current || {};
+    var daily = state.cur.daily || {};
+    var w = wmo(num(cur.weather_code));
+    var t = num(cur.temperature_2m), feel = num(cur.apparent_temperature);
+    var humid = num(cur.relative_humidity_2m), wind = num(cur.wind_speed_10m);
     var dp = dateParts(daily.time && daily.time[0]);
-    el("date-line").textContent = dp.md + " (" + dp.w + ") · " + esc(state.place.name);
+    el("sub1").textContent = "";
+    el("date-line").textContent = dp.md + " (" + dp.w + ") · " + state.place.name;
     el("w-icon").textContent = cur.is_day !== 0 ? w[1] : w[2];
     el("w-temp").textContent = t === null ? "—" : Math.round(t * 10) / 10 + "°";
     el("w-cond").textContent = w[0] + (feel !== null ? " · 체감 " + Math.round(feel) + "°" : "");
@@ -489,17 +650,36 @@
     el("w-wind").innerHTML = wind === null ? "—" : Math.round(wind) + '<span class="unit">km/h</span>';
     el("w-max").innerHTML = deg(arr(daily.temperature_2m_max, 0));
     el("w-min").innerHTML = deg(arr(daily.temperature_2m_min, 0));
-    el("w-pop").innerHTML = (function (p) {
-      return p === null ? "—" : p + '<span class="unit">%</span>';
-    })(arr(daily.precipitation_probability_max, 0));
-    el("coord-line").textContent = "위치: " + placeLabel(state.place) +
-      " (" + (Math.round(state.place.latitude * 100) / 100) + ", " +
-      (Math.round(state.place.longitude * 100) / 100) + ")";
+    el("w-pop").innerHTML = (function (p) { return p === null ? "—" : p + '<span class="unit">%</span>'; })
+      (arr(daily.precipitation_probability_max, 0));
   }
 
   // ── 2단계: 주간 예보 ─────────────────────────────────
+  function runStep2() {
+    if (isLocked(2) || el("start2").disabled) return;
+    setLoading(2, true);
+    setStatus("1주일 예보를 불러오는 중…");
+    var url = FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
+      "&timezone=auto&forecast_days=7";
+    fetchJson(url)
+      .then(function (data) {
+        if (!data || !data.daily || !data.daily.time) throw new Error("bad payload");
+        state.week = data;
+        renderStep2();
+        setNode(2, "done");
+        if (!isDone(3)) setNode(3, "ready");
+        stampNow();
+        setStatus("✓ 2단계 완료 — 3단계 시작을 눌러보세요");
+      })["catch"](function (err) {
+        setStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
+          : "예보를 불러오지 못했어요 — 네트워크를 확인해 주세요", true);
+      })
+      .then(function () { setLoading(2, false); });
+  }
+
   function renderStep2() {
-    var d = state.data.daily || {};
+    var d = state.week.daily || {};
     var n = (d.time || []).length;
     var weekMin = Infinity, weekMax = -Infinity, i;
     for (i = 0; i < n; i++) {
@@ -529,14 +709,13 @@
           '</div>' +
         '</div>';
     }
-    el("week-body").innerHTML = html ||
-      '<div class="otip">예보 데이터가 없습니다.</div>';
+    el("week-body").innerHTML = html || '<div class="otip">예보 데이터가 없습니다.</div>';
   }
 
-  // ── 3단계: 내일 옷차림 추천 ──────────────────────────
+  // ── 3단계: 내일 옷차림 ───────────────────────────────
   function outfitFor(hi, lo, pop, code, wind, uv, feelHi) {
     var items, head;
-    if (hi === null) { return { head: "데이터 부족", items: [], tips: ["예보 데이터가 없어 추천할 수 없습니다."] }; }
+    if (hi === null) return { head: "데이터 부족", items: [], tips: ["예보 데이터가 없어 추천할 수 없습니다."] };
     if (hi >= 28)      { head = "한여름 더위 — 최대한 가볍고 시원하게"; items = ["👕 반팔·민소매 티", "🩳 반바지·린넨 팬츠", "🧢 모자", "👟 통풍 잘 되는 신발"]; }
     else if (hi >= 23) { head = "따뜻한 날 — 가벼운 여름 차림"; items = ["👕 반팔 티", "👖 얇은 면바지·반바지", "👔 얇은 셔츠(냉방 대비)"]; }
     else if (hi >= 20) { head = "선선한 날 — 얇은 긴팔이 적당"; items = ["👕 긴팔 티", "🧥 얇은 가디건", "👖 청바지·면바지"]; }
@@ -560,8 +739,30 @@
     return { head: head, items: items, tips: tips };
   }
 
+  function runStep3() {
+    if (isLocked(3) || el("start3").disabled) return;
+    setLoading(3, true);
+    setStatus("내일 옷차림을 계산하는 중…");
+    // 2단계 데이터가 있으면 재사용, 없으면(만일을 대비) 다시 불러옴
+    var p = state.week ? Promise.resolve(state.week)
+      : fetchJson(FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
+          "&timezone=auto&forecast_days=7");
+    p.then(function (data) {
+        if (!data || !data.daily) throw new Error("bad payload");
+        state.week = data;
+        renderStep3();
+        setNode(3, "done");
+        stampNow();
+        setStatus("✓ 3단계 완료 — 모든 단계가 끝났어요");
+      })["catch"](function () {
+        setStatus("옷차림 계산에 필요한 예보를 불러오지 못했어요", true);
+      })
+      .then(function () { setLoading(3, false); });
+  }
+
   function renderStep3() {
-    var d = state.data.daily || {};
+    var d = state.week.daily || {};
     var i = 1; // 내일
     var hi = arr(d.temperature_2m_max, i), lo = arr(d.temperature_2m_min, i);
     var pop = arr(d.precipitation_probability_max, i);
@@ -573,49 +774,29 @@
     var dp = dateParts(d.time && d.time[i]);
     var o = outfitFor(hi, lo, pop, code, wind, uv, feelHi);
 
-    var html =
+    el("outfit-body").innerHTML =
       '<div class="outfit-sum">내일 ' + dp.md + ' (' + dp.w + ') · ' + w[1] + ' ' + esc(w[0]) +
         ' · ' + (lo === null ? "–" : Math.round(lo) + "°") + ' ~ ' + (hi === null ? "–" : Math.round(hi) + "°") +
         (pop === null ? "" : ' · 강수확률 ' + pop + '%') + '</div>' +
       '<div class="outfit-head">' + esc(o.head) + '</div>' +
       '<div class="oitems">' + o.items.map(function (it) { return '<span class="oitem">' + esc(it) + '</span>'; }).join("") + '</div>' +
       '<div class="otips">' + o.tips.map(function (t) { return '<div class="otip">' + esc(t) + '</div>'; }).join("") + '</div>';
-    el("outfit-body").innerHTML = html;
   }
 
-  // ── 단계 잠금/펼치기 ─────────────────────────────────
-  function unlock(n) {
-    var node = el("node" + n), head = el("head" + n);
-    node.classList.remove("locked");
-    head.disabled = false;
-    el("sub" + n).textContent = "눌러서 펼치기";
-  }
+  // ── 바인딩 & 초기 상태 ───────────────────────────────
+  el("start1").addEventListener("click", runStep1);
+  el("start2").addEventListener("click", runStep2);
+  el("start3").addEventListener("click", runStep3);
+  el("rerun1").addEventListener("click", runStep1);
+  el("rerun2").addEventListener("click", runStep2);
+  el("rerun3").addEventListener("click", runStep3);
+  bindHead(1, runStep1);
+  bindHead(2, runStep2);
+  bindHead(3, runStep3);
 
-  function bindToggle(n, renderFn, next) {
-    var node = el("node" + n), head = el("head" + n);
-    head.addEventListener("click", function () {
-      if (head.disabled) return;
-      var opening = !node.classList.contains("open");
-      if (opening) {
-        renderFn();
-        node.classList.add("open");
-        el("sub" + n).textContent = "";
-        if (next) unlock(next);
-      } else {
-        node.classList.remove("open");
-        el("sub" + n).textContent = "눌러서 펼치기";
-      }
-      head.setAttribute("aria-expanded", opening ? "true" : "false");
-    });
-  }
-
-  bindToggle(2, renderStep2, 3);
-  bindToggle(3, renderStep3, null);
-
-  btn.addEventListener("click", function () { run(); });
-  input.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { e.preventDefault(); run(); }
-  });
+  setNode(1, "ready"); // 기본 위치(서울)로 1단계는 바로 시작 가능
+  setNode(2, "locked");
+  setNode(3, "locked");
 })();
 </script>
 </body>
