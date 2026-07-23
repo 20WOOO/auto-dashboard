@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="13">
+<meta name="app-version" content="15">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -365,6 +365,26 @@
   .copy-mini:hover { border-color: var(--accent); color: var(--accent); }
   .copy-mini:disabled { opacity: 0.6; cursor: default; }
 
+  /* 보이스 설계 / TTS */
+  .cast-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 12px; }
+  .cast-chip { background: var(--tile); border-radius: 11px; padding: 8px 12px; font-size: 12.5px; }
+  .cast-chip b { color: var(--ink); }
+  .cast-chip .cc-meta { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .line-card { border: 1px solid var(--hairline); border-radius: 11px; padding: 10px 12px; margin-top: 8px; }
+  .lc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .lc-no { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+  .lc-speaker { font-size: 12.5px; font-weight: 700; }
+  .lc-style { font-size: 11.5px; color: var(--muted); }
+  .lc-text { font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+  .lc-audio { margin-top: 8px; }
+  .lc-audio audio { width: 100%; height: 34px; }
+  .lc-actions { margin-top: 5px; }
+  .lc-actions a, .lc-actions button {
+    background: none; border: none; color: var(--accent); font-family: inherit;
+    font-size: 11.5px; cursor: pointer; text-decoration: none; padding: 2px 4px;
+  }
+  .lc-wait { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
   /* 씬 이미지 생성 */
   .img-opts { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
   .img-opts .copy-mini { align-self: flex-start; margin-top: 8px; }
@@ -414,7 +434,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v13</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v15</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -755,8 +775,22 @@
                 <option value="1:1">1:1 정사각</option>
               </select>
             </div>
+            <div class="ai-model-row">
+              <span>생성 위치</span>
+              <select id="sh-imgloc" aria-label="생성 위치 선택">
+                <option value="browser">이 브라우저 (화면 켜둬야 함)</option>
+                <option value="server">GitHub 서버 (폰 꺼도 됨 · 텔레그램으로 수신)</option>
+              </select>
+            </div>
+            <div id="sh-gh-box" hidden>
+              <div class="ai-row" style="margin-top:8px">
+                <input type="password" id="sh-gh-token" placeholder="GitHub 토큰 (서버 모드용)" autocomplete="off">
+                <button class="key-btn" id="sh-gh-save" type="button">저장</button>
+              </div>
+              <div class="ai-state" id="sh-gh-state"></div>
+            </div>
             <div class="ai-row" style="margin-top:8px">
-              <input type="password" id="sh-tg-token" placeholder="텔레그램 봇 토큰 (선택 — 완료 시 알림)" autocomplete="off">
+              <input type="password" id="sh-tg-token" placeholder="텔레그램 봇 토큰 (완료 알림/서버 수신)" autocomplete="off">
               <button class="key-btn" id="sh-tg-conn" type="button">연결</button>
             </div>
             <div class="ai-state" id="sh-tg-state"></div>
@@ -777,7 +811,72 @@
       </section>
 
       <div class="connector"></div>
-      <div class="ghost-node">＋ 5단계 — 예: TTS 음성 생성 · 썸네일 문구 · 해시태그 추천<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
+
+      <section class="node locked" id="shnode5">
+        <button class="node-head" id="shhead5" type="button" aria-expanded="false">
+          <span class="stepchip">5</span>
+          <div class="node-title">음성 대본·보이스 설계 <span class="node-sub" id="shsub5">3단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="shstart5" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 5단계 시작 — 보이스 설계</span>
+          </button>
+          <div class="gen-live" id="shlive5" hidden>
+            <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta5">실시간 생성 중…</span></div>
+            <div class="gl-sec-label" id="shthinklab5" hidden>💭 AI의 생각</div>
+            <pre class="gl-think" id="shlivethink5" hidden></pre>
+            <div class="gl-sec-label" id="shoutlab5" hidden>✍️ 결과 작성</div>
+            <pre class="gl-text" id="shlivetext5" hidden></pre>
+          </div>
+          <div class="manual-box" id="shmanual5" hidden>
+            <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
+            <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON)을 붙여넣고 적용</div>
+            <button class="copy-mini" id="shcopy5" type="button">📋 프롬프트 복사</button>
+            <textarea id="shpaste5" placeholder="Claude 답변(JSON)을 그대로 붙여넣기"></textarea>
+            <button class="step-start mb-apply" id="shapply5" type="button"><span class="lbl">적용하기</span></button>
+          </div>
+          <div id="shcontent5" hidden>
+            <div id="sh-voiceplan"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun5" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <section class="node locked" id="shnode6">
+        <button class="node-head" id="shhead6" type="button" aria-expanded="false">
+          <span class="stepchip">6</span>
+          <div class="node-title">TTS 음성 생성 <span class="node-sub" id="shsub6">5단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <div class="img-opts">
+            <div class="ai-model-row">
+              <span>TTS 엔진</span>
+              <select id="sh-ttsprov" aria-label="음성 생성기 선택">
+                <option value="pollinations">Pollinations — 무료 · 키 불필요</option>
+                <option value="gemini">Gemini TTS — 내 Gemini 키 · 감정/톤 제어</option>
+              </select>
+            </div>
+          </div>
+          <button class="step-start" id="shstart6" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 6단계 시작 — 음성 생성</span>
+          </button>
+          <div id="shcontent6" hidden>
+            <div class="imgprog" id="shttsprog" hidden>
+              <div class="imgbar"><div class="imgfill" id="shttsfill"></div></div>
+              <div class="imgprog-txt" id="shttstxt"></div>
+            </div>
+            <div id="sh-audios"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun6" type="button">🔄 전체 다시 생성</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+      <div class="ghost-node">＋ 7단계 — 예: 자막(SRT) · 썸네일 문구 · 해시태그<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
     </div>
 
     <div class="card-foot">
@@ -1799,12 +1898,12 @@
     "(3) 유튜브 커뮤니티 가이드에 안전한 수위에서, 시청자가 끝까지 보게 만드는 자극적이고 반전 있는 전개를 쓴다. " +
     "(4) 반드시 요청된 JSON 형식으로만 응답하고 JSON 밖에 다른 텍스트를 쓰지 않는다.";
 
-  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKeys: { claude: "", gemini: "", tg: "" }, memProvider: "" };
+  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, voiceplan: null, memKeys: { claude: "", gemini: "", tg: "", gh: "" }, memProvider: "" };
   var shStatus = statusCtl("sh-status");
   var shflow = flowCtl({
     pre: "sh",
-    lock: { 1: "키워드 입력 후 시작할 수 있어요", 2: "1단계에서 썰을 고르면 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요", 4: "3단계 완료 후 시작할 수 있어요" },
-    labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트", 4: "▶ 4단계 시작 — 씬 이미지 생성" }
+    lock: { 1: "키워드 입력 후 시작할 수 있어요", 2: "1단계에서 썰을 고르면 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요", 4: "3단계 완료 후 시작할 수 있어요", 5: "3단계 완료 후 시작할 수 있어요", 6: "5단계 완료 후 시작할 수 있어요" },
+    labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트", 4: "▶ 4단계 시작 — 씬 이미지 생성", 5: "▶ 5단계 시작 — 보이스 설계", 6: "▶ 6단계 시작 — 음성 생성" }
   });
 
   // ── AI 공급자/키/모델 설정 ──
@@ -2199,6 +2298,21 @@
       "대본 제목: " + script.title + "\n씬 목록:\n" + sceneList + "\n" +
       "JSON 형식으로만 답하라: {\"style\":\"공통 스타일 설명\",\"prompts\":[{\"no\":1,\"ko\":\"...\",\"en\":\"...\"}]}";
   }
+  var GEMINI_TTS_VOICES = "Kore, Leda, Aoede, Callirrhoe, Zephyr, Autonoe, Charon, Puck, Fenrir, Orus, Enceladus, Iapetus, Algenib, Umbriel";
+  function buildP5(script) {
+    var lines = script.scenes.map(function (s) {
+      return s.no + ". [" + (s.heading || "") + "] " + String(s.narration || "");
+    }).join("\n");
+    return "아래 유튜브 썰 대본을 TTS(음성) 제작용 ‘보이스 대본’으로 설계하라.\n" +
+      "요구사항:\n" +
+      "1) 등장 화자를 식별하라. 대부분 1인칭 ‘내레이터’이며, 대사에 등장하는 인물이 있으면 별도 화자로 나눠라.\n" +
+      "2) 각 화자마다 gender(성별), age(나이대), tone(목소리 톤)을 정하고, 아래 목록에서 어울리는 voice 하나를 배정하라.\n" +
+      "   사용 가능한 voice: " + GEMINI_TTS_VOICES + "\n" +
+      "3) 대본을 자연스러운 대사 라인 8~16개로 나누고, 각 라인마다 speaker(화자), style(한국어 감정·톤 연기지시, 예: ‘낮고 떨리는 목소리로 천천히’), text(실제 읽을 문장)를 작성하라.\n" +
+      "   내레이션 라인의 speaker는 ‘내레이터’로 한다.\n" +
+      "대본:\n" + lines + "\n" +
+      "JSON 형식으로만 답하라: {\"cast\":[{\"role\":\"\",\"gender\":\"\",\"age\":\"\",\"tone\":\"\",\"voice\":\"\"}],\"lines\":[{\"no\":1,\"speaker\":\"\",\"style\":\"\",\"text\":\"\"}]}";
+  }
   function manualText(user) {
     return COMMON_SYS + "\n\n---\n\n" + user + "\n\n(중요: 반드시 JSON만 출력하고 다른 설명은 쓰지 마라)";
   }
@@ -2237,33 +2351,49 @@
       if (!obj || !obj.stories || !obj.stories.length) throw new Error("JSON_PARSE");
       shstate.stories = obj.stories.slice(0, 5);
       shstate.sel = -1;
-      shstate.script = null; shstate.prompts = null;
+      shstate.script = null; shstate.prompts = null; shstate.voiceplan = null;
       renderStories();
       hideManual(1);
       shflow.setNode(1, "done");
       shflow.setNode(2, "locked");
       shflow.setNode(3, "locked");
       shflow.setNode(4, "locked");
+      shflow.setNode(5, "locked");
+      shflow.setNode(6, "locked");
       stampNow("sh-stamp");
       shStatus("✓ 썰 5개 생성 완료 — 마음에 드는 썰을 하나 골라주세요");
     } else if (n === 2) {
       if (!obj || !obj.scenes || !obj.scenes.length) throw new Error("JSON_PARSE");
       shstate.script = { title: obj.title || shstate.stories[shstate.sel].title, scenes: obj.scenes };
+      shstate.prompts = null; shstate.voiceplan = null;
       renderScript();
       hideManual(2);
       shflow.setNode(2, "done");
       if (!shflow.isDone(3)) shflow.setNode(3, "ready");
+      shflow.setNode(4, "locked");
+      shflow.setNode(5, "locked");
+      shflow.setNode(6, "locked");
       stampNow("sh-stamp");
       shStatus("✓ 2단계 완료 — 3단계에서 씬별 이미지 프롬프트를 만들어보세요");
-    } else {
+    } else if (n === 3) {
       if (!obj || !obj.prompts || !obj.prompts.length) throw new Error("JSON_PARSE");
       shstate.prompts = { style: obj.style || "", prompts: obj.prompts };
       renderPrompts();
       hideManual(3);
       shflow.setNode(3, "done");
       if (!shflow.isDone(4)) shflow.setNode(4, "ready");
+      if (!shflow.isDone(5)) shflow.setNode(5, "ready");
       stampNow("sh-stamp");
-      shStatus("✓ 3단계 완료 — 4단계에서 씬 이미지를 바로 만들어보세요");
+      shStatus("✓ 3단계 완료 — 4단계(이미지) 또는 5단계(음성)로 진행하세요");
+    } else {
+      if (!obj || !obj.lines || !obj.lines.length) throw new Error("JSON_PARSE");
+      shstate.voiceplan = { cast: obj.cast || [], lines: obj.lines.slice(0, 20) };
+      renderVoicePlan();
+      hideManual(5);
+      shflow.setNode(5, "done");
+      if (!shflow.isDone(6)) shflow.setNode(6, "ready");
+      stampNow("sh-stamp");
+      shStatus("✓ 5단계 완료 — 6단계에서 음성을 생성하세요");
     }
   }
   function runShStep(n, userPromptFn, maxTok, loadingMsg) {
@@ -2314,13 +2444,15 @@
   }
   function selectStory(i) {
     shstate.sel = i;
-    shstate.script = null; shstate.prompts = null;
+    shstate.script = null; shstate.prompts = null; shstate.voiceplan = null;
     var kids = el("sh-stories").querySelectorAll(".story-card");
     for (var k = 0; k < kids.length; k++) kids[k].className = "story-card" + (k === i ? " sel" : "");
     shflow.setNode(2, "ready");
     shflow.setNode(3, "locked");
     shflow.setNode(4, "locked");
-    hideManual(2); hideManual(3);
+    shflow.setNode(5, "locked");
+    shflow.setNode(6, "locked");
+    hideManual(2); hideManual(3); hideManual(5);
     shStatus("‘" + shstate.stories[i].title + "’ 선택 — 2단계 시작을 누르세요");
   }
   function scriptFullText() {
@@ -2630,12 +2762,69 @@
       imgstate.done += 1; updateImgProg();
     });
   }
+  // ── 서버 모드(GitHub Actions) ──
+  var GH_REPO = "20wooo/auto-dashboard";
+  function ghToken() { return lsGet("ad_gh_token") || shstate.memKeys.gh || ""; }
+  function imgLoc() { return lsGet("ad_img_loc") || "browser"; }
+  function renderGhState() {
+    var s = el("sh-gh-state"), t = ghToken();
+    if (t) {
+      s.innerHTML = "🔑 GitHub 토큰 저장됨 — 버튼을 누르면 서버가 만들어 텔레그램으로 보냅니다 <button type=\"button\" id=\"sh-gh-del\">삭제</button>";
+      var d = document.getElementById("sh-gh-del");
+      if (d) d.addEventListener("click", function () {
+        try { localStorage.removeItem("ad_gh_token"); } catch (e) {}
+        shstate.memKeys.gh = ""; renderGhState();
+      });
+    } else {
+      s.innerHTML = "서버 모드는 GitHub 토큰이 필요해요 (Fine-grained · 이 저장소 <b>Contents: Read and write</b>). 이 브라우저에만 저장되고 공개되지 않습니다.";
+    }
+  }
+  function dispatchImages() {
+    var token = ghToken();
+    if (!token) { shStatus("서버 모드: GitHub 토큰을 먼저 저장하세요", true); return; }
+    if (!tgChat()) { shStatus("서버가 텔레그램으로 보내려면 먼저 텔레그램을 연결하세요 (아래 봇 연결)", true); return; }
+    var list = shstate.prompts.prompts.slice(0, 12).map(function (p) { return { no: p.no, en: p.en }; });
+    var payload = {
+      prompts: list, style: shstate.prompts.style || "",
+      provider: imgProv(), ratio: imgRatioV(), chatId: tgChat(),
+      title: (shstate.script && shstate.script.title) || shstate.kw || ""
+    };
+    shflow.setLoading(4, true);
+    shStatus("GitHub 서버에 생성 요청을 보내는 중…");
+    fetch("https://api.github.com/repos/" + GH_REPO + "/dispatches", {
+      method: "POST",
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer " + token,
+        "content-type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      body: JSON.stringify({ event_type: "gen-images", client_payload: payload })
+    }).then(function (res) {
+      if (res.status === 204) {
+        el("shcontent4").hidden = false;
+        el("shimgprog").hidden = true;
+        el("sh-images").innerHTML = '<div class="sum-box">🚀 GitHub 서버에 요청을 보냈어요. <b>이제 이 창을 닫아도 됩니다.</b><br>1~3분 내로 텔레그램으로 이미지가 하나씩 도착합니다.<br><a href="https://github.com/' + GH_REPO + '/actions" target="_blank" rel="noopener">진행 상황 보기 ↗</a></div>';
+        shflow.setNode(4, "done");
+        stampNow("sh-stamp");
+        shStatus("✓ 서버에 요청 완료 — 텔레그램을 확인하세요");
+      } else {
+        return res.json().then(function (j) { var e = new Error((j && j.message) || ("HTTP " + res.status)); e.status = res.status; throw e; });
+      }
+    })["catch"](function (e) {
+      shStatus((e && (e.status === 401 || /credential/i.test(e.message || ""))) ? "GitHub 토큰이 올바르지 않아요 — 권한(Contents 쓰기)·만료일을 확인하세요"
+        : (e && e.status === 404) ? "저장소를 찾을 수 없어요 — 토큰의 저장소 접근 권한을 확인하세요"
+        : "요청 실패 — " + ((e && e.message) || "네트워크 확인"), true);
+    }).then(function () { shflow.setLoading(4, false); });
+  }
+
   function runSh4() {
     if (shflow.isLocked(4) || imgstate.running) return;
     if (!shstate.prompts || !(shstate.prompts.prompts || []).length) {
       shStatus("3단계에서 이미지 프롬프트를 먼저 만들어주세요", true);
       return;
     }
+    if (imgLoc() === "server") { dispatchImages(); return; }
     imgstate.prov = imgProv();
     imgstate.ratio = imgRatioV();
     if (imgstate.prov === "gemini" && !getGeminiKey()) {
@@ -2673,8 +2862,184 @@
     });
   }
 
+  // ── 5단계: 보이스 설계 (AI) ──
+  function runSh5() {
+    if (!shstate.script) { shStatus("2단계 대본을 먼저 만들어주세요", true); return; }
+    runShStep(5, function () { return buildP5(shstate.script); }, 4000, "화자별 목소리·감정을 설계하는 중… (20~40초)");
+  }
+  function renderVoicePlan() {
+    var vp = shstate.voiceplan;
+    var castHtml = (vp.cast || []).map(function (c) {
+      return '<div class="cast-chip"><b>🎙️ ' + esc(c.role || "화자") + "</b>" +
+        '<div class="cc-meta">' + [c.gender, c.age, c.tone].filter(Boolean).map(esc).join(" · ") +
+        (c.voice ? " · voice: " + esc(c.voice) : "") + "</div></div>";
+    }).join("");
+    var linesHtml = vp.lines.map(function (l) {
+      return '<div class="line-card"><div class="lc-head"><span class="lc-no">' + esc(l.no) + "</span>" +
+        '<span class="lc-speaker">' + esc(l.speaker || "내레이터") + "</span>" +
+        (l.style ? '<span class="lc-style">· ' + esc(l.style) + "</span>" : "") + "</div>" +
+        '<div class="lc-text">' + esc(l.text || "") + "</div></div>";
+    }).join("");
+    el("sh-voiceplan").innerHTML =
+      '<div class="cast-row">' + castHtml + "</div>" +
+      '<div class="rerun-row" style="justify-content:flex-start;margin:0 0 2px"><button class="copy-mini" id="sh-copy-voice" type="button">📋 보이스 대본 복사</button></div>' +
+      linesHtml;
+    var all = (vp.cast || []).map(function (c) { return "· " + c.role + ": " + [c.gender, c.age, c.tone, c.voice].filter(Boolean).join(", "); }).join("\n") +
+      "\n\n" + vp.lines.map(function (l) { return "[" + l.no + " " + (l.speaker || "") + " / " + (l.style || "") + "]\n" + l.text; }).join("\n\n");
+    document.getElementById("sh-copy-voice").addEventListener("click", function () { copyText(all, this); });
+  }
+
+  // ── 6단계: TTS 음성 생성 ──
+  var GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+  function ttsProv() { return lsGet("ad_tts_prov") || "pollinations"; }
+  var ttsstate = { running: false, done: 0, ok: 0, total: 0, lines: [], urls: [] };
+
+  function castFor(speaker) {
+    var cast = (shstate.voiceplan && shstate.voiceplan.cast) || [];
+    for (var i = 0; i < cast.length; i++) if (cast[i].role === speaker) return cast[i];
+    return null;
+  }
+  function isMale(c) { return c && /남|male|man|소년|아저씨|아빠|형|삼촌/i.test((c.gender || "") + (c.role || "")); }
+  function geminiVoiceFor(c) {
+    var valid = GEMINI_TTS_VOICES.split(", ");
+    if (c && c.voice && valid.indexOf(c.voice) >= 0) return c.voice;
+    return isMale(c) ? "Charon" : "Kore";
+  }
+  function pollVoiceFor(c) { return isMale(c) ? "onyx" : "nova"; }
+
+  function pcmToWavUrl(b64, sampleRate) {
+    var bin = atob(b64), len = bin.length;
+    var buf = new ArrayBuffer(44 + len), view = new DataView(buf);
+    function ws(off, s) { for (var i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); }
+    ws(0, "RIFF"); view.setUint32(4, 36 + len, true); ws(8, "WAVE"); ws(12, "fmt ");
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, "data"); view.setUint32(40, len, true);
+    for (var j = 0; j < len; j++) view.setUint8(44 + j, bin.charCodeAt(j));
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+
+  function updateTtsProg() {
+    var pct = ttsstate.total ? Math.round(ttsstate.done / ttsstate.total * 100) : 0;
+    el("shttsprog").hidden = false;
+    el("shttsfill").style.width = pct + "%";
+    el("shttstxt").textContent = ttsstate.running
+      ? "음성 " + ttsstate.done + "/" + ttsstate.total + " 생성 중… (성공 " + ttsstate.ok + ")"
+      : "음성 " + ttsstate.ok + "/" + ttsstate.total + " 완성";
+  }
+  function renderAudioGrid() {
+    el("sh-audios").innerHTML = ttsstate.lines.map(function (l, i) {
+      return '<div class="line-card"><div class="lc-head"><span class="lc-no">' + esc(l.no) + "</span>" +
+        '<span class="lc-speaker">' + esc(l.speaker || "내레이터") + "</span>" +
+        (l.style ? '<span class="lc-style">· ' + esc(l.style) + "</span>" : "") + "</div>" +
+        '<div class="lc-text">' + esc(l.text || "") + "</div>" +
+        '<div class="lc-audio" id="shaud' + i + '"><div class="lc-wait">대기 중…</div></div></div>';
+    }).join("");
+  }
+  function audioSet(i, url, ext) {
+    el("shaud" + i).innerHTML = '<audio controls preload="none" src="' + url + '"></audio>' +
+      '<div class="lc-actions"><a href="' + url + '" download="line-' + (ttsstate.lines[i].no) + "." + ext + '">⬇ 저장</a></div>';
+  }
+  function audioFail(i, msg) {
+    var a = el("shaud" + i);
+    a.innerHTML = '<div class="lc-wait">⚠️ ' + esc(msg || "실패") + ' <button type="button" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:inherit">재시도</button></div>';
+    a.querySelector("button").addEventListener("click", function () { retryAudio(i); });
+  }
+  function retryAudio(i) {
+    if (ttsstate.running) return;
+    ttsstate.running = true; ttsstate.done -= 1; updateTtsProg();
+    genOneAudio(i).then(function () {
+      ttsstate.running = false; updateTtsProg();
+      if (ttsstate.ok === ttsstate.total) { notifyTts(); shStatus("✓ 음성 " + ttsstate.ok + "개 모두 완성!"); }
+    });
+  }
+  function notifyTts() {
+    ding();
+    try { if (navigator.vibrate) navigator.vibrate([180, 90, 180]); } catch (e) {}
+    try { if ("Notification" in window && Notification.permission === "granted") new Notification("🔊 음성 생성 완료", { body: ttsstate.ok + "/" + ttsstate.total + "개 — 자동화 대시보드" }); } catch (e) {}
+    tgSend("🔊 음성 " + ttsstate.ok + "/" + ttsstate.total + "개 생성 완료 — 대시보드에서 재생·저장하세요.");
+  }
+
+  function genOneAudio(i) {
+    var l = ttsstate.lines[i];
+    var c = castFor(l.speaker);
+    el("shaud" + i).innerHTML = '<div class="lc-wait">🔊 생성 중…</div>';
+    if (ttsProv() === "gemini") {
+      if (!getGeminiKey()) { audioFail(i, "Gemini 키 없음"); ttsstate.done += 1; updateTtsProg(); return Promise.resolve(); }
+      var text = (l.style ? l.style + "로 말하듯이 읽어줘: " : "") + (l.text || "");
+      return fetch(GEMINI_BASE + "/v1beta/models/" + GEMINI_TTS_MODEL + ":generateContent", {
+        method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": getGeminiKey() },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: text }] }],
+          generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiVoiceFor(c) } } } }
+        })
+      }).then(function (r) {
+        return r.json()["catch"](function () { return {}; }).then(function (j) {
+          if (!r.ok) { var e = new Error((j.error && j.error.message) || ("HTTP " + r.status)); e.status = r.status; throw e; }
+          var parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+          var data = null;
+          parts.forEach(function (p) { var d = p.inlineData || p.inline_data; if (!data && d && d.data) data = d.data; });
+          if (!data) throw new Error("응답에 오디오 없음");
+          audioSet(i, pcmToWavUrl(data, 24000), "wav");
+          ttsstate.ok += 1; ttsstate.done += 1; updateTtsProg();
+        });
+      })["catch"](function (e) {
+        audioFail(i, e && e.status === 429 ? "무료 한도 초과 — 잠시 후" : ((e && e.message) || "오류"));
+        ttsstate.done += 1; updateTtsProg();
+      });
+    }
+    // Pollinations (무료)
+    var say = (l.style ? "(" + l.style + ") " : "") + (l.text || "");
+    var url = "https://text.pollinations.ai/" + encodeURIComponent(say) + "?model=openai-audio&voice=" + pollVoiceFor(c);
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var to = ctrl && setTimeout(function () { ctrl.abort(); }, 90000);
+    return fetch(url, ctrl ? { signal: ctrl.signal } : {}).then(function (r) {
+      if (to) clearTimeout(to);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.blob();
+    }).then(function (blob) {
+      audioSet(i, URL.createObjectURL(blob), "mp3");
+      ttsstate.ok += 1; ttsstate.done += 1; updateTtsProg();
+    })["catch"](function (e) {
+      if (to) clearTimeout(to);
+      audioFail(i, (e && e.name === "AbortError") ? "시간 초과" : ((e && e.message) || "오류"));
+      ttsstate.done += 1; updateTtsProg();
+    });
+  }
+
+  function runSh6() {
+    if (shflow.isLocked(6) || ttsstate.running) return;
+    if (!shstate.voiceplan || !(shstate.voiceplan.lines || []).length) { shStatus("5단계 보이스 설계를 먼저 만들어주세요", true); return; }
+    if (ttsProv() === "gemini" && !getGeminiKey()) { shStatus("Gemini 키가 없어요 — TTS를 Pollinations로 바꾸거나 Gemini 키를 저장하세요", true); return; }
+    ensureAudio();
+    ttsstate.lines = shstate.voiceplan.lines.slice(0, 20);
+    ttsstate.total = ttsstate.lines.length;
+    ttsstate.done = 0; ttsstate.ok = 0; ttsstate.running = true;
+    el("shcontent6").hidden = false;
+    renderAudioGrid();
+    shflow.setLoading(6, true);
+    updateTtsProg();
+    shStatus("라인별 음성을 순서대로 생성하는 중… 화면을 켜둔 채 기다려주세요");
+    var chain = Promise.resolve();
+    ttsstate.lines.forEach(function (_, i) {
+      chain = chain.then(function () { return genOneAudio(i); })
+        .then(function () { if (ttsProv() === "gemini" && i < ttsstate.total - 1) return wait(1200); });
+    });
+    chain.then(function () {
+      ttsstate.running = false;
+      updateTtsProg();
+      shflow.setLoading(6, false);
+      shflow.setNode(6, "done");
+      stampNow("sh-stamp");
+      notifyTts();
+      shStatus(ttsstate.ok === ttsstate.total
+        ? "✓ 음성 " + ttsstate.ok + "개 모두 완성! 각 라인에서 재생·저장하세요"
+        : "음성 " + ttsstate.ok + "/" + ttsstate.total + "개 완성 — 실패한 라인은 재시도하세요", ttsstate.ok !== ttsstate.total);
+    });
+  }
+
   // ── 수동 모드 바인딩 ──
-  [1, 2, 3].forEach(function (n) {
+  [1, 2, 3, 5].forEach(function (n) {
     el("shcopy" + n).addEventListener("click", function () { copyText(shPending[n] || "", this); });
     el("shapply" + n).addEventListener("click", function () {
       try {
@@ -2689,12 +3054,20 @@
   el("shstart1").addEventListener("click", runSh1);
   el("shstart2").addEventListener("click", runSh2);
   el("shstart3").addEventListener("click", runSh3);
+  el("shstart5").addEventListener("click", runSh5);
+  el("shstart6").addEventListener("click", runSh6);
   el("shrerun1").addEventListener("click", runSh1);
   el("shrerun2").addEventListener("click", runSh2);
   el("shrerun3").addEventListener("click", runSh3);
+  el("shrerun5").addEventListener("click", runSh5);
+  el("shrerun6").addEventListener("click", runSh6);
   shflow.bindHead(1, runSh1);
   shflow.bindHead(2, runSh2);
   shflow.bindHead(3, runSh3);
+  shflow.bindHead(5, runSh5);
+  shflow.bindHead(6, runSh6);
+  el("sh-ttsprov").value = ttsProv();
+  el("sh-ttsprov").addEventListener("change", function () { lsSet("ad_tts_prov", el("sh-ttsprov").value); });
   el("sh-kw").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); runSh1(); }
   });
@@ -2705,6 +3078,24 @@
   el("sh-imgprov").addEventListener("change", function () { lsSet("ad_img_prov", el("sh-imgprov").value); });
   el("sh-ratio").value = imgRatioV();
   el("sh-ratio").addEventListener("change", function () { lsSet("ad_img_ratio", el("sh-ratio").value); });
+  el("sh-imgloc").value = imgLoc();
+  el("sh-gh-box").hidden = imgLoc() !== "server";
+  el("sh-imgloc").addEventListener("change", function () {
+    var v = el("sh-imgloc").value;
+    lsSet("ad_img_loc", v);
+    el("sh-gh-box").hidden = v !== "server";
+    if (v === "server") renderGhState();
+  });
+  el("sh-gh-save").addEventListener("click", function () {
+    var v = el("sh-gh-token").value.trim();
+    if (!v) { shStatus("GitHub 토큰을 입력하세요", true); return; }
+    lsSet("ad_gh_token", v);
+    if (!lsGet("ad_gh_token")) shstate.memKeys.gh = v;
+    el("sh-gh-token").value = "";
+    renderGhState();
+    shStatus("GitHub 토큰 저장 완료 — 이제 서버 모드로 생성할 수 있어요");
+  });
+  renderGhState();
   el("sh-notif").addEventListener("click", function () {
     ensureAudio();
     if (!("Notification" in window)) return;
@@ -2723,6 +3114,8 @@
   shflow.setNode(2, "locked");
   shflow.setNode(3, "locked");
   shflow.setNode(4, "locked");
+  shflow.setNode(5, "locked");
+  shflow.setNode(6, "locked");
   renderKeyState();
   if (getKey()) loadModels();
 })();
