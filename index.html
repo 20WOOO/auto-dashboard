@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
+<meta name="app-version" content="5">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -61,6 +62,12 @@
 
   header.page { margin: 6px 4px 14px; }
   header.page h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .ver {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    color: var(--accent); border: 1.5px solid var(--accent);
+    border-radius: 999px; padding: 1px 8px; margin-left: 7px;
+    vertical-align: 3px; letter-spacing: 0.02em;
+  }
   header.page p { margin-top: 4px; font-size: 13px; color: var(--muted); }
 
   /* ── 프로젝트 탭 ─────────────────── */
@@ -296,7 +303,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드</h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v5</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
