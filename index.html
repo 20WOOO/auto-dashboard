@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
-<meta name="description" content="시작 버튼을 누르면 오늘의 서울 날씨를 불러오는 자동화 대시보드">
+<meta name="description" content="위치를 검색하면 현재 날씨 → 주간 예보 → 내일 옷차림까지 단계적으로 실행되는 자동화 대시보드">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -19,8 +19,10 @@
     --hairline: #e1e0d9;
     --border: rgba(11, 11, 11, 0.10);
     --accent: #2a78d6;
+    --accent-soft: #9ec5f4;
     --accent-press: #256abf;
     --critical: #d03b3b;
+    --tile: rgba(11, 11, 11, 0.025);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -33,8 +35,10 @@
       --hairline: #2c2c2a;
       --border: rgba(255, 255, 255, 0.10);
       --accent: #3987e5;
+      --accent-soft: #1c5cab;
       --accent-press: #2a78d6;
       --critical: #e66767;
+      --tile: rgba(255, 255, 255, 0.035);
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,12 +47,12 @@
     background: var(--plane);
     color: var(--ink);
     min-height: 100vh;
-    padding: 24px 16px 40px;
+    padding: 24px 14px 40px;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 640px; margin: 0 auto; }
+  .wrap { max-width: 620px; margin: 0 auto; }
 
-  header.page { margin: 8px 4px 20px; }
+  header.page { margin: 6px 4px 18px; }
   header.page h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   header.page p { margin-top: 4px; font-size: 13px; color: var(--muted); }
 
@@ -56,80 +60,164 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 20px;
+    padding: 18px;
     margin-bottom: 16px;
   }
   .card-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; margin-bottom: 16px;
+    gap: 12px; margin-bottom: 14px;
   }
   .card-head h2 { font-size: 16px; font-weight: 700; }
-  .card-head .stamp { font-size: 12px; color: var(--muted); text-align: right; }
+  .card-head .stamp { font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
 
+  /* ── 검색줄 ───────────────────────── */
+  .search-row { display: flex; gap: 8px; }
+  .search-row input {
+    flex: 1; min-width: 0; min-height: 48px;
+    border: 1px solid var(--hairline); border-radius: 12px;
+    background: var(--plane); color: var(--ink);
+    font-family: inherit; font-size: 16px; padding: 0 14px;
+  }
+  .search-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .search-row input::placeholder { color: var(--muted); }
   .run-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; min-height: 52px;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    min-height: 48px; padding: 0 18px; flex-shrink: 0;
     border: none; border-radius: 12px;
     background: var(--accent); color: #ffffff;
-    font-family: inherit; font-size: 16px; font-weight: 600;
-    cursor: pointer;
-    transition: filter 0.15s ease;
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: filter 0.15s ease;
   }
   .run-btn:hover { filter: brightness(1.06); }
   .run-btn:active { background: var(--accent-press); }
   .run-btn:disabled { opacity: 0.55; cursor: default; }
   .run-btn .spinner {
-    width: 16px; height: 16px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35); border-top-color: #ffffff;
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
     animation: spin 0.8s linear infinite; display: none;
   }
   .run-btn.loading .spinner { display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .status { min-height: 20px; margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
+  .status { min-height: 18px; margin-top: 9px; font-size: 13px; color: var(--muted); text-align: center; }
   .status.error { color: var(--critical); font-weight: 600; }
 
-  .weather-body { margin-top: 8px; }
-  .date-line { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
-  .hero {
-    display: flex; align-items: center; gap: 14px;
-    padding: 6px 0 18px;
+  .alt-chips { display: none; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+  .alt-chips.show { display: flex; }
+  .alt-chips .hint { font-size: 12px; color: var(--muted); width: 100%; text-align: center; margin-bottom: 2px; }
+  .chip {
+    border: 1px solid var(--hairline); border-radius: 999px;
+    background: none; color: var(--ink-2);
+    font-family: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
   }
-  .hero .icon { font-size: 44px; line-height: 1; }
-  .hero .temp { font-size: 56px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
-  .hero .cond { font-size: 15px; color: var(--ink-2); font-weight: 500; margin-top: 6px; }
+  .chip.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
-  .tiles {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-  @media (max-width: 420px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
-  .tile {
+  /* ── 순서도(플로우) ───────────────── */
+  .flow { margin-top: 16px; }
+  .node {
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
+    border-radius: 14px;
+    background: var(--surface);
+    overflow: hidden;
   }
-  .tile .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .tile .value { font-size: 18px; font-weight: 600; }
-  .tile .value .unit { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 1px; }
+  .node.locked { border-style: dashed; border-color: var(--hairline); background: none; }
+  .node-head {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 13px 14px;
+    background: none; border: none; cursor: pointer;
+    font-family: inherit; text-align: left; color: var(--ink);
+  }
+  .node-head[disabled] { cursor: default; }
+  .node.static .node-head { cursor: default; }
+  .stepchip {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 700;
+  }
+  .node.locked .stepchip { background: none; border: 1.5px dashed var(--muted); color: var(--muted); }
+  .node-title { font-size: 14.5px; font-weight: 700; flex: 1; }
+  .node.locked .node-title { color: var(--muted); font-weight: 600; }
+  .node-sub { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+  .chev { color: var(--muted); font-size: 12px; transition: transform 0.2s ease; flex-shrink: 0; }
+  .node.open .chev { transform: rotate(180deg); }
+  .node.locked .chev { opacity: 0.5; }
+  .node-body { display: none; padding: 2px 14px 16px; }
+  .node.open .node-body { display: block; animation: fadein 0.25s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .node.open .node-body, .chev { animation: none; transition: none; } }
+
+  .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
+  .connector::after {
+    content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid var(--hairline);
+  }
+
+  /* 1단계: 현재 날씨 */
+  .date-line { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 4px; }
+  .hero { display: flex; align-items: center; gap: 14px; padding: 4px 0 14px; }
+  .hero .icon { font-size: 42px; line-height: 1; }
+  .hero .temp { font-size: 52px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+  .hero .cond { font-size: 14px; color: var(--ink-2); font-weight: 500; margin-top: 5px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  @media (max-width: 400px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--tile); border-radius: 11px; padding: 10px 12px; }
+  .tile .label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+  .tile .value { font-size: 17px; font-weight: 600; }
+  .tile .value .unit { font-size: 12.5px; font-weight: 500; color: var(--ink-2); margin-left: 1px; }
+
+  /* 2단계: 주간 예보 */
+  .day-row {
+    display: grid; grid-template-columns: 52px 30px 52px 1fr;
+    align-items: center; gap: 6px;
+    padding: 8px 0; border-bottom: 1px solid var(--hairline);
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-row .dname { font-size: 13px; font-weight: 600; }
+  .day-row .dname small { display: block; font-size: 10.5px; color: var(--muted); font-weight: 400; }
+  .day-row .dicon { font-size: 19px; text-align: center; }
+  .day-row .dpop { font-size: 11.5px; color: var(--muted); text-align: center; }
+  .day-row .dpop.wet { color: var(--accent); font-weight: 600; }
+  .day-row .dbar { display: flex; align-items: center; gap: 7px; }
+  .day-row .tmin, .day-row .tmax { font-size: 12.5px; width: 26px; flex-shrink: 0; }
+  .day-row .tmin { color: var(--ink-2); text-align: right; }
+  .day-row .tmax { font-weight: 700; }
+  .day-row .track { flex: 1; height: 5px; border-radius: 3px; background: var(--tile); position: relative; }
+  .day-row .fill {
+    position: absolute; top: 0; height: 5px; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+  }
+
+  /* 3단계: 옷차림 */
+  .outfit-sum { font-size: 13px; color: var(--ink-2); margin: 4px 0 10px; }
+  .outfit-head { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .oitems { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+  .oitem {
+    background: var(--tile); border-radius: 999px;
+    font-size: 13px; font-weight: 600; padding: 7px 13px;
+  }
+  .otips { display: flex; flex-direction: column; gap: 5px; }
+  .otip { font-size: 12.5px; color: var(--ink-2); }
+
+  .ghost-node {
+    border: 1px dashed var(--hairline); border-radius: 14px;
+    padding: 13px 14px; text-align: center;
+    color: var(--muted); font-size: 12.5px; line-height: 1.5;
+  }
 
   .card-foot {
-    margin-top: 16px; padding-top: 12px;
+    margin-top: 16px; padding-top: 11px;
     border-top: 1px solid var(--hairline);
     display: flex; justify-content: space-between; gap: 12px;
-    font-size: 11.5px; color: var(--muted);
+    font-size: 11px; color: var(--muted);
   }
   .card-foot a { color: var(--muted); }
 
   .ghost-card {
-    border: 1px dashed var(--hairline);
-    background: none;
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.6;
+    border: 1px dashed var(--hairline); border-radius: 16px;
+    padding: 18px; text-align: center;
+    color: var(--muted); font-size: 13px; line-height: 1.6;
   }
 </style>
 </head>
@@ -137,49 +225,92 @@
 <div class="wrap">
   <header class="page">
     <h1>⚡ 자동화 대시보드</h1>
-    <p>버튼을 누르면 등록된 자동화가 실행됩니다</p>
+    <p>위치를 검색하고, 단계를 눌러 확장하세요</p>
   </header>
 
-  <section class="card" id="weather-card">
+  <section class="card">
     <div class="card-head">
-      <h2>🌤️ 서울 날씨</h2>
+      <h2>🌦️ 날씨 자동화</h2>
       <div class="stamp" id="stamp">아직 실행 전</div>
     </div>
 
-    <button class="run-btn" id="run-btn" type="button">
-      <span class="spinner" aria-hidden="true"></span>
-      <span id="run-label">▶ 시작</span>
-    </button>
-    <div class="status" id="status">시작을 누르면 오늘의 서울 날씨를 불러옵니다</div>
+    <div class="search-row">
+      <input id="loc-input" type="search" placeholder="도시·장소 입력 (예: 서울, 부산, Tokyo)"
+             autocomplete="off" enterkeyhint="go">
+      <button class="run-btn" id="run-btn" type="button">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="run-label">▶ 시작</span>
+      </button>
+    </div>
+    <div class="status" id="status">위치를 입력하고 시작을 누르세요 (비워두면 서울)</div>
+    <div class="alt-chips" id="alt-chips"></div>
 
-    <div class="weather-body">
-      <div class="date-line" id="date-line">&nbsp;</div>
-      <div class="hero">
-        <div class="icon" id="w-icon">—</div>
-        <div>
-          <span class="temp" id="w-temp">—</span>
-          <div class="cond" id="w-cond">대기 중</div>
+    <div class="flow">
+
+      <!-- 1단계: 현재 날씨 -->
+      <section class="node static open" id="node1">
+        <div class="node-head">
+          <span class="stepchip">1</span>
+          <div class="node-title">현재 날씨 <span class="node-sub" id="place-name">위치 미지정</span></div>
         </div>
-      </div>
-      <div class="tiles">
-        <div class="tile"><div class="label">체감온도</div><div class="value" id="w-feel">—</div></div>
-        <div class="tile"><div class="label">습도</div><div class="value" id="w-humid">—</div></div>
-        <div class="tile"><div class="label">바람</div><div class="value" id="w-wind">—</div></div>
-        <div class="tile"><div class="label">오늘 최고</div><div class="value" id="w-max">—</div></div>
-        <div class="tile"><div class="label">오늘 최저</div><div class="value" id="w-min">—</div></div>
-        <div class="tile"><div class="label">강수확률</div><div class="value" id="w-pop">—</div></div>
-      </div>
+        <div class="node-body">
+          <div class="date-line" id="date-line">&nbsp;</div>
+          <div class="hero">
+            <div class="icon" id="w-icon">—</div>
+            <div>
+              <span class="temp" id="w-temp">—</span>
+              <div class="cond" id="w-cond">대기 중</div>
+            </div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><div class="label">체감온도</div><div class="value" id="w-feel">—</div></div>
+            <div class="tile"><div class="label">습도</div><div class="value" id="w-humid">—</div></div>
+            <div class="tile"><div class="label">바람</div><div class="value" id="w-wind">—</div></div>
+            <div class="tile"><div class="label">오늘 최고</div><div class="value" id="w-max">—</div></div>
+            <div class="tile"><div class="label">오늘 최저</div><div class="value" id="w-min">—</div></div>
+            <div class="tile"><div class="label">강수확률</div><div class="value" id="w-pop">—</div></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <!-- 2단계: 주간 예보 -->
+      <section class="node locked" id="node2">
+        <button class="node-head" id="head2" type="button" disabled aria-expanded="false">
+          <span class="stepchip">2</span>
+          <div class="node-title">1주일 예상 날씨 <span class="node-sub" id="sub2">1단계 실행 후 열 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body" id="week-body"></div>
+      </section>
+
+      <div class="connector"></div>
+
+      <!-- 3단계: 내일 옷차림 -->
+      <section class="node locked" id="node3">
+        <button class="node-head" id="head3" type="button" disabled aria-expanded="false">
+          <span class="stepchip">3</span>
+          <div class="node-title">내일 옷차림 추천 <span class="node-sub" id="sub3">2단계를 먼저 열어보세요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body" id="outfit-body"></div>
+      </section>
+
+      <div class="connector"></div>
+
+      <div class="ghost-node">＋ 4단계 — 다음 자동화가 들어갈 자리<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
     </div>
 
     <div class="card-foot">
-      <span>위치: 서울 (37.57, 126.98)</span>
+      <span id="coord-line">위치 검색 · 날씨 예보</span>
       <span>데이터: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></span>
     </div>
   </section>
 
   <section class="ghost-card">
-    ＋ 다음 자동화가 들어갈 자리<br>
-    Claude에게 요청해 새 카드를 추가할 수 있습니다
+    ＋ 새 자동화 카드가 들어갈 자리<br>
+    Claude에게 요청해 대시보드를 확장할 수 있습니다
   </section>
 </div>
 
@@ -187,14 +318,11 @@
 (function () {
   "use strict";
 
-  var API_URL =
-    "https://api.open-meteo.com/v1/forecast" +
-    "?latitude=37.5665&longitude=126.978" +
-    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
-    "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code" +
-    "&timezone=Asia%2FSeoul&forecast_days=1";
+  // ── API ──────────────────────────────────────────────
+  var GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
+  var FC_URL = "https://api.open-meteo.com/v1/forecast";
 
-  // WMO weather code → 한국어 설명 + 아이콘
+  // WMO weather code → [설명, 낮 아이콘, 밤 아이콘]
   var WMO = {
     0:  ["맑음", "☀️", "🌙"],
     1:  ["대체로 맑음", "🌤️", "🌙"],
@@ -211,96 +339,283 @@
     85: ["약한 소낙눈", "🌨️", "🌨️"], 86: ["강한 소낙눈", "❄️", "❄️"],
     95: ["뇌우", "⛈️", "⛈️"], 96: ["뇌우(우박)", "⛈️", "⛈️"], 99: ["강한 뇌우(우박)", "⛈️", "⛈️"]
   };
+  var DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
+  // ── 상태 ─────────────────────────────────────────────
+  var state = { place: null, data: null, hasRun: false };
+
+  var input = document.getElementById("loc-input");
   var btn = document.getElementById("run-btn");
   var runLabel = document.getElementById("run-label");
   var statusEl = document.getElementById("status");
   var stamp = document.getElementById("stamp");
-  var hasRun = false;
+  var chipsEl = document.getElementById("alt-chips");
 
   function el(id) { return document.getElementById(id); }
   function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
-  function put(id, html) { el(id).innerHTML = html; }
+  function arr(a, i) { return (a && a.length > i) ? num(a[i]) : null; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  }); }
   function deg(v) { return v === null ? "—" : Math.round(v) + '<span class="unit">°</span>'; }
+  function wmo(code) { return (code !== null && WMO[code]) || ["정보 없음", "🌡️", "🌡️"]; }
 
-  function kstNow(opts) {
-    try { return new Date().toLocaleString("ko-KR", Object.assign({ timeZone: "Asia/Seoul" }, opts)); }
-    catch (e) { return new Date().toLocaleString("ko-KR", opts); }
+  // "2026-07-24" → {w:"금", md:"7.24"} (문자열만 사용, 시간대 문제 없음)
+  function dateParts(ds) {
+    var p = (ds || "").split("-").map(Number);
+    if (p.length < 3 || !p[0]) return { w: "?", md: "?" };
+    var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return { w: DAYS[d.getUTCDay()], md: p[1] + "." + p[2] };
+  }
+
+  function fetchJson(url) {
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 12000);
+    return fetch(url, ctrl ? { signal: ctrl.signal } : {})
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
   }
 
   function setLoading(on) {
     btn.disabled = on;
     btn.classList.toggle("loading", on);
-    runLabel.textContent = on ? "불러오는 중…" : (hasRun ? "🔄 다시 불러오기" : "▶ 시작");
+    runLabel.textContent = on ? "실행 중…" : (state.hasRun ? "🔄 실행" : "▶ 시작");
   }
-
-  function render(data) {
-    var cur = (data && data.current) || {};
-    var daily = (data && data.daily) || {};
-
-    var t = num(cur.temperature_2m);
-    var feel = num(cur.apparent_temperature);
-    var humid = num(cur.relative_humidity_2m);
-    var wind = num(cur.wind_speed_10m);
-    var code = num(cur.weather_code);
-    var isDay = cur.is_day !== 0; // 값이 없으면 낮으로 간주
-    var tmax = num(daily.temperature_2m_max && daily.temperature_2m_max[0]);
-    var tmin = num(daily.temperature_2m_min && daily.temperature_2m_min[0]);
-    var pop = num(daily.precipitation_probability_max && daily.precipitation_probability_max[0]);
-
-    var w = (code !== null && WMO[code]) || ["정보 없음", "🌡️", "🌡️"];
-
-    put("date-line", kstNow({ month: "long", day: "numeric", weekday: "long" }) + " · 서울");
-    put("w-icon", isDay ? w[1] : w[2]);
-    put("w-temp", t === null ? "—" : Math.round(t * 10) / 10 + "°");
-    put("w-cond", w[0] + (feel !== null ? " · 체감 " + Math.round(feel) + "°" : ""));
-    put("w-feel", deg(feel));
-    put("w-humid", humid === null ? "—" : humid + '<span class="unit">%</span>');
-    put("w-wind", wind === null ? "—" : Math.round(wind) + '<span class="unit">km/h</span>');
-    put("w-max", deg(tmax));
-    put("w-min", deg(tmin));
-    put("w-pop", pop === null ? "—" : pop + '<span class="unit">%</span>');
-
-    stamp.textContent = "마지막 업데이트 " + kstNow({ hour: "numeric", minute: "2-digit" });
-    statusEl.className = "status";
-    statusEl.textContent = "✓ 업데이트 완료";
-    hasRun = true;
-  }
-
-  function fail(msg) {
-    statusEl.className = "status error";
+  function setStatus(msg, isError) {
+    statusEl.className = isError ? "status error" : "status";
     statusEl.textContent = msg;
   }
 
-  function run() {
+  // ── 위치 검색(지오코딩) ───────────────────────────────
+  function placeLabel(r) {
+    var extra = r.admin1 && r.admin1 !== r.name ? r.admin1 : (r.country || "");
+    return r.name + (extra ? " · " + extra : "");
+  }
+
+  function geocode(q) {
+    var url = GEO_URL + "?name=" + encodeURIComponent(q) + "&count=4&language=ko&format=json";
+    return fetchJson(url).then(function (d) {
+      var rs = (d && d.results) || [];
+      if (!rs.length) throw new Error("NO_PLACE");
+      return rs;
+    });
+  }
+
+  function renderChips(results, chosen) {
+    chipsEl.innerHTML = "";
+    if (!results || results.length < 2) { chipsEl.className = "alt-chips"; return; }
+    var hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = "찾은 위치 — 다른 곳이면 눌러서 변경";
+    chipsEl.appendChild(hint);
+    results.forEach(function (r) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (r === chosen ? " active" : "");
+      b.textContent = placeLabel(r);
+      b.addEventListener("click", function () { run(r, results); });
+      chipsEl.appendChild(b);
+    });
+    chipsEl.className = "alt-chips show";
+  }
+
+  // ── 실행 파이프라인 ──────────────────────────────────
+  function run(directPlace, keepResults) {
     setLoading(true);
-    statusEl.className = "status";
-    statusEl.textContent = "서울 날씨를 불러오는 중…";
+    var q = (input.value || "").trim() || "서울";
 
-    var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 12000);
+    var placeP = directPlace
+      ? Promise.resolve({ place: directPlace, results: keepResults || null })
+      : (setStatus("‘" + q + "’ 위치를 찾는 중…"),
+         geocode(q).then(function (rs) { return { place: rs[0], results: rs }; }));
 
-    fetch(API_URL, ctrl ? { signal: ctrl.signal } : {})
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
+    placeP
+      .then(function (pr) {
+        state.place = pr.place;
+        renderChips(pr.results, pr.place);
+        setStatus(placeLabel(pr.place) + " 날씨를 불러오는 중…");
+        var url = FC_URL +
+          "?latitude=" + pr.place.latitude + "&longitude=" + pr.place.longitude +
+          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
+          "&timezone=auto&forecast_days=7";
+        return fetchJson(url);
       })
       .then(function (data) {
         if (!data || !data.current) throw new Error("bad payload");
-        render(data);
+        state.data = data;
+        state.hasRun = true;
+        renderStep1();
+        unlock(2);
+        if (el("node2").classList.contains("open")) renderStep2();
+        if (el("node3").classList.contains("open")) renderStep3();
+        stamp.textContent = "마지막 업데이트 " +
+          new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+        setStatus("✓ 업데이트 완료 — 2단계를 눌러 예보를 펼쳐보세요");
       })
       .catch(function (err) {
-        fail(err && err.name === "AbortError"
-          ? "응답이 없습니다. 잠시 후 다시 시도해 주세요."
-          : "날씨를 불러오지 못했습니다. 네트워크 확인 후 다시 시도해 주세요.");
+        if (err && err.message === "NO_PLACE")
+          setStatus("‘" + q + "’ 위치를 찾지 못했습니다. 다른 이름으로 검색해 보세요.", true);
+        else if (err && err.name === "AbortError")
+          setStatus("응답이 없습니다. 잠시 후 다시 시도해 주세요.", true);
+        else
+          setStatus("불러오지 못했습니다. 네트워크 확인 후 다시 시도해 주세요.", true);
       })
-      .then(function () {
-        if (timer) clearTimeout(timer);
-        setLoading(false);
-      });
+      .then(function () { setLoading(false); });
   }
 
-  btn.addEventListener("click", run);
+  // ── 1단계: 현재 날씨 ─────────────────────────────────
+  function renderStep1() {
+    var cur = state.data.current || {};
+    var daily = state.data.daily || {};
+    var w = wmo(num(cur.weather_code));
+    var feel = num(cur.apparent_temperature);
+    var t = num(cur.temperature_2m);
+    var humid = num(cur.relative_humidity_2m);
+    var wind = num(cur.wind_speed_10m);
+
+    el("place-name").textContent = placeLabel(state.place);
+    var dp = dateParts(daily.time && daily.time[0]);
+    el("date-line").textContent = dp.md + " (" + dp.w + ") · " + esc(state.place.name);
+    el("w-icon").textContent = cur.is_day !== 0 ? w[1] : w[2];
+    el("w-temp").textContent = t === null ? "—" : Math.round(t * 10) / 10 + "°";
+    el("w-cond").textContent = w[0] + (feel !== null ? " · 체감 " + Math.round(feel) + "°" : "");
+    el("w-feel").innerHTML = deg(feel);
+    el("w-humid").innerHTML = humid === null ? "—" : humid + '<span class="unit">%</span>';
+    el("w-wind").innerHTML = wind === null ? "—" : Math.round(wind) + '<span class="unit">km/h</span>';
+    el("w-max").innerHTML = deg(arr(daily.temperature_2m_max, 0));
+    el("w-min").innerHTML = deg(arr(daily.temperature_2m_min, 0));
+    el("w-pop").innerHTML = (function (p) {
+      return p === null ? "—" : p + '<span class="unit">%</span>';
+    })(arr(daily.precipitation_probability_max, 0));
+    el("coord-line").textContent = "위치: " + placeLabel(state.place) +
+      " (" + (Math.round(state.place.latitude * 100) / 100) + ", " +
+      (Math.round(state.place.longitude * 100) / 100) + ")";
+  }
+
+  // ── 2단계: 주간 예보 ─────────────────────────────────
+  function renderStep2() {
+    var d = state.data.daily || {};
+    var n = (d.time || []).length;
+    var weekMin = Infinity, weekMax = -Infinity, i;
+    for (i = 0; i < n; i++) {
+      var lo = arr(d.temperature_2m_min, i), hi = arr(d.temperature_2m_max, i);
+      if (lo !== null && lo < weekMin) weekMin = lo;
+      if (hi !== null && hi > weekMax) weekMax = hi;
+    }
+    var span = Math.max(weekMax - weekMin, 1);
+    var html = "";
+    for (i = 0; i < n; i++) {
+      var dp = dateParts(d.time[i]);
+      var name = i === 0 ? "오늘" : (i === 1 ? "내일" : dp.w + "요일");
+      var w = wmo(arr(d.weather_code, i));
+      var lo2 = arr(d.temperature_2m_min, i), hi2 = arr(d.temperature_2m_max, i);
+      var pop = arr(d.precipitation_probability_max, i);
+      var left = lo2 === null ? 0 : (lo2 - weekMin) / span * 100;
+      var width = (lo2 === null || hi2 === null) ? 0 : Math.max((hi2 - lo2) / span * 100, 6);
+      html +=
+        '<div class="day-row">' +
+          '<div class="dname">' + name + '<small>' + dp.md + '</small></div>' +
+          '<div class="dicon" title="' + esc(w[0]) + '">' + w[1] + '</div>' +
+          '<div class="dpop' + (pop !== null && pop >= 60 ? " wet" : "") + '">💧' + (pop === null ? "–" : pop + "%") + '</div>' +
+          '<div class="dbar">' +
+            '<span class="tmin">' + (lo2 === null ? "–" : Math.round(lo2) + "°") + '</span>' +
+            '<div class="track"><div class="fill" style="left:' + left + '%;width:' + width + '%"></div></div>' +
+            '<span class="tmax">' + (hi2 === null ? "–" : Math.round(hi2) + "°") + '</span>' +
+          '</div>' +
+        '</div>';
+    }
+    el("week-body").innerHTML = html ||
+      '<div class="otip">예보 데이터가 없습니다.</div>';
+  }
+
+  // ── 3단계: 내일 옷차림 추천 ──────────────────────────
+  function outfitFor(hi, lo, pop, code, wind, uv, feelHi) {
+    var items, head;
+    if (hi === null) { return { head: "데이터 부족", items: [], tips: ["예보 데이터가 없어 추천할 수 없습니다."] }; }
+    if (hi >= 28)      { head = "한여름 더위 — 최대한 가볍고 시원하게"; items = ["👕 반팔·민소매 티", "🩳 반바지·린넨 팬츠", "🧢 모자", "👟 통풍 잘 되는 신발"]; }
+    else if (hi >= 23) { head = "따뜻한 날 — 가벼운 여름 차림"; items = ["👕 반팔 티", "👖 얇은 면바지·반바지", "👔 얇은 셔츠(냉방 대비)"]; }
+    else if (hi >= 20) { head = "선선한 날 — 얇은 긴팔이 적당"; items = ["👕 긴팔 티", "🧥 얇은 가디건", "👖 청바지·면바지"]; }
+    else if (hi >= 17) { head = "쌀쌀한 편 — 가벼운 겉옷 필요"; items = ["👕 맨투맨·얇은 니트", "🧥 가디건·바람막이", "👖 청바지"]; }
+    else if (hi >= 12) { head = "쌀쌀한 날 — 겉옷 챙기세요"; items = ["🧥 자켓·야상", "🧶 니트", "👖 긴바지"]; }
+    else if (hi >= 9)  { head = "추운 날 — 코트가 필요해요"; items = ["🧥 트렌치코트·점퍼", "🧶 도톰한 니트", "🧣 얇은 목도리"]; }
+    else if (hi >= 5)  { head = "많이 추움 — 두껍게 입으세요"; items = ["🧥 울 코트·가죽 자켓", "🧶 히트텍 + 니트 레이어드", "🧣 목도리"]; }
+    else               { head = "한겨울 추위 — 완전 무장"; items = ["🧥 패딩·두꺼운 코트", "🧣 목도리·장갑", "🧦 기모 안감"]; }
+
+    var tips = [];
+    if (hi !== null && lo !== null && hi - lo >= 10)
+      tips.push("🌡️ 일교차 " + Math.round(hi - lo) + "° — 아침·저녁용 겉옷 하나 더 챙기세요");
+    if (pop !== null && pop >= 60) { items.push("☂️ 우산"); tips.push("☔ 강수확률 " + pop + "% — 우산 필수"); }
+    else if (pop !== null && pop >= 30) tips.push("🌂 강수확률 " + pop + "% — 접이식 우산이 있으면 안심");
+    if (code !== null && code >= 71 && code <= 86) tips.push("❄️ 눈 예보 — 미끄럼 주의, 방수되는 신발 추천");
+    if (wind !== null && wind >= 35) tips.push("💨 바람 강함(" + Math.round(wind) + "km/h) — 바람막이 추천");
+    if (uv !== null && uv >= 8) tips.push("🕶️ 자외선 매우 강함(UV " + Math.round(uv) + ") — 선크림·모자 필수");
+    if (feelHi !== null && hi !== null && feelHi - hi >= 3) tips.push("🥵 체감 최고 " + Math.round(feelHi) + "° — 숫자보다 덥게 느껴져요");
+    if (hi >= 31) tips.push("🥤 폭염 수준 — 야외에선 수분을 자주 보충하세요");
+    if (!tips.length) tips.push("특별한 주의사항 없이 무난한 날씨예요");
+    return { head: head, items: items, tips: tips };
+  }
+
+  function renderStep3() {
+    var d = state.data.daily || {};
+    var i = 1; // 내일
+    var hi = arr(d.temperature_2m_max, i), lo = arr(d.temperature_2m_min, i);
+    var pop = arr(d.precipitation_probability_max, i);
+    var code = arr(d.weather_code, i);
+    var wind = arr(d.wind_speed_10m_max, i);
+    var uv = arr(d.uv_index_max, i);
+    var feelHi = arr(d.apparent_temperature_max, i);
+    var w = wmo(code);
+    var dp = dateParts(d.time && d.time[i]);
+    var o = outfitFor(hi, lo, pop, code, wind, uv, feelHi);
+
+    var html =
+      '<div class="outfit-sum">내일 ' + dp.md + ' (' + dp.w + ') · ' + w[1] + ' ' + esc(w[0]) +
+        ' · ' + (lo === null ? "–" : Math.round(lo) + "°") + ' ~ ' + (hi === null ? "–" : Math.round(hi) + "°") +
+        (pop === null ? "" : ' · 강수확률 ' + pop + '%') + '</div>' +
+      '<div class="outfit-head">' + esc(o.head) + '</div>' +
+      '<div class="oitems">' + o.items.map(function (it) { return '<span class="oitem">' + esc(it) + '</span>'; }).join("") + '</div>' +
+      '<div class="otips">' + o.tips.map(function (t) { return '<div class="otip">' + esc(t) + '</div>'; }).join("") + '</div>';
+    el("outfit-body").innerHTML = html;
+  }
+
+  // ── 단계 잠금/펼치기 ─────────────────────────────────
+  function unlock(n) {
+    var node = el("node" + n), head = el("head" + n);
+    node.classList.remove("locked");
+    head.disabled = false;
+    el("sub" + n).textContent = "눌러서 펼치기";
+  }
+
+  function bindToggle(n, renderFn, next) {
+    var node = el("node" + n), head = el("head" + n);
+    head.addEventListener("click", function () {
+      if (head.disabled) return;
+      var opening = !node.classList.contains("open");
+      if (opening) {
+        renderFn();
+        node.classList.add("open");
+        el("sub" + n).textContent = "";
+        if (next) unlock(next);
+      } else {
+        node.classList.remove("open");
+        el("sub" + n).textContent = "눌러서 펼치기";
+      }
+      head.setAttribute("aria-expanded", opening ? "true" : "false");
+    });
+  }
+
+  bindToggle(2, renderStep2, 3);
+  bindToggle(3, renderStep3, null);
+
+  btn.addEventListener("click", function () { run(); });
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); run(); }
+  });
 })();
 </script>
 </body>
