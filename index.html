@@ -517,22 +517,25 @@
   }
   function fetchJson(url, ctrl) { return fetchRaw(url, false, ctrl); }
 
-  // CORS 중계 서버(무료) — 1순위 실패 시 2순위로 재시도
+  // CORS 중계 서버(무료) — 3곳에 동시 요청, 먼저 성공한 응답 사용
   var PROXIES = [
     function (u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
-    function (u) { return "https://corsproxy.io/?url=" + encodeURIComponent(u); }
+    function (u) { return "https://corsproxy.io/?url=" + encodeURIComponent(u); },
+    function (u) { return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
   ];
   function viaProxy(url, asText, ctrl) {
-    var i = 0;
-    function attempt() {
-      return fetchRaw(PROXIES[i](url), asText, ctrl)["catch"](function (e) {
-        if (e && e.name === "AbortError") throw e;
-        i += 1;
-        if (i < PROXIES.length) return attempt();
-        throw e;
+    return new Promise(function (resolve, reject) {
+      var pending = PROXIES.length, done = false, lastErr = null;
+      PROXIES.forEach(function (mk) {
+        fetchRaw(mk(url), asText, ctrl).then(function (d) {
+          if (done) return;
+          done = true; resolve(d);
+        }, function (e) {
+          lastErr = e; pending -= 1;
+          if (!done && pending === 0) reject(lastErr);
+        });
       });
-    }
-    return attempt();
+    });
   }
 
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
@@ -944,6 +947,101 @@
   var Y_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search";
   var Y_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
+  // ── 한글 별칭 사전: 인기 종목은 네트워크 없이 즉시 검색 ──
+  // [키워드들, 심볼, 표시명, 거래소, 종류]
+  var ALIAS = [
+    // 미국 주식
+    [["테슬라","tesla","tsla"], "TSLA", "테슬라", "NASDAQ", "주식"],
+    [["애플","apple","aapl"], "AAPL", "애플", "NASDAQ", "주식"],
+    [["엔비디아","nvidia","nvda"], "NVDA", "엔비디아", "NASDAQ", "주식"],
+    [["마이크로소프트","microsoft","msft"], "MSFT", "마이크로소프트", "NASDAQ", "주식"],
+    [["구글","알파벳","google","googl"], "GOOGL", "알파벳(구글)", "NASDAQ", "주식"],
+    [["아마존","amazon","amzn"], "AMZN", "아마존", "NASDAQ", "주식"],
+    [["메타","페이스북","meta"], "META", "메타(페이스북)", "NASDAQ", "주식"],
+    [["넷플릭스","netflix","nflx"], "NFLX", "넷플릭스", "NASDAQ", "주식"],
+    [["에이엠디","amd"], "AMD", "AMD", "NASDAQ", "주식"],
+    [["인텔","intel","intc"], "INTC", "인텔", "NASDAQ", "주식"],
+    [["마이크론","micron","mu"], "MU", "마이크론", "NASDAQ", "주식"],
+    [["퀄컴","qualcomm","qcom"], "QCOM", "퀄컴", "NASDAQ", "주식"],
+    [["브로드컴","broadcom","avgo"], "AVGO", "브로드컴", "NASDAQ", "주식"],
+    [["티에스엠씨","tsmc","tsm"], "TSM", "TSMC", "NYSE", "주식"],
+    [["팔란티어","palantir","pltr"], "PLTR", "팔란티어", "NASDAQ", "주식"],
+    [["코인베이스","coinbase","coin"], "COIN", "코인베이스", "NASDAQ", "주식"],
+    [["버크셔","berkshire","brk"], "BRK-B", "버크셔 해서웨이 B", "NYSE", "주식"],
+    [["일라이릴리","릴리","lilly","lly"], "LLY", "일라이 릴리", "NYSE", "주식"],
+    [["디즈니","disney","dis"], "DIS", "디즈니", "NYSE", "주식"],
+    [["스타벅스","starbucks","sbux"], "SBUX", "스타벅스", "NASDAQ", "주식"],
+    // 미국 ETF
+    [["나스닥100","qqq"], "QQQ", "Invesco QQQ (나스닥100)", "NASDAQ", "ETF"],
+    [["spy","에스앤피","s&p500"], "SPY", "SPDR S&P500", "NYSE", "ETF"],
+    [["voo"], "VOO", "Vanguard S&P500", "NYSE", "ETF"],
+    [["ivv"], "IVV", "iShares S&P500", "NYSE", "ETF"],
+    [["슈드","schd"], "SCHD", "Schwab 미국배당 (SCHD)", "NYSE", "ETF"],
+    [["제피","jepi"], "JEPI", "JPMorgan 커버드콜 (JEPI)", "NYSE", "ETF"],
+    [["jepq"], "JEPQ", "JPMorgan 나스닥 커버드콜 (JEPQ)", "NASDAQ", "ETF"],
+    [["tqqq"], "TQQQ", "ProShares 나스닥100 3배 (TQQQ)", "NASDAQ", "ETF"],
+    [["soxl","속슬"], "SOXL", "Direxion 반도체 3배 (SOXL)", "NYSE", "ETF"],
+    [["soxx","반도체etf"], "SOXX", "iShares 반도체 (SOXX)", "NASDAQ", "ETF"],
+    [["smh"], "SMH", "VanEck 반도체 (SMH)", "NASDAQ", "ETF"],
+    [["다우etf","dia"], "DIA", "SPDR 다우존스 (DIA)", "NYSE", "ETF"],
+    [["러셀","iwm"], "IWM", "iShares 러셀2000 (IWM)", "NYSE", "ETF"],
+    [["vti"], "VTI", "Vanguard 미국전체 (VTI)", "NYSE", "ETF"],
+    [["금etf","gld"], "GLD", "SPDR 금 (GLD)", "NYSE", "ETF"],
+    [["미국채","tlt"], "TLT", "iShares 미국 장기채 (TLT)", "NASDAQ", "ETF"],
+    // 지수·환율
+    [["나스닥지수","나스닥종합"], "^IXIC", "나스닥 종합지수", "지수", "지수"],
+    [["에스앤피지수","s&p500지수"], "^GSPC", "S&P500 지수", "지수", "지수"],
+    [["다우지수","다우존스"], "^DJI", "다우존스 지수", "지수", "지수"],
+    [["코스피"], "^KS11", "코스피 지수", "KRX", "지수"],
+    [["코스닥지수","코스닥"], "^KQ11", "코스닥 지수", "KRX", "지수"],
+    [["니케이","nikkei"], "^N225", "니케이225", "지수", "지수"],
+    [["원달러","달러환율","환율","usdkrw"], "KRW=X", "원/달러 환율", "FX", "환율"],
+    // 한국 주식·ETF
+    [["삼성전자","삼전"], "005930.KS", "삼성전자", "KOSPI", "주식"],
+    [["삼성전자우"], "005935.KS", "삼성전자우", "KOSPI", "주식"],
+    [["sk하이닉스","하이닉스","에스케이하이닉스"], "000660.KS", "SK하이닉스", "KOSPI", "주식"],
+    [["엘지에너지솔루션","lg에너지솔루션","엘지엔솔"], "373220.KS", "LG에너지솔루션", "KOSPI", "주식"],
+    [["삼성바이오로직스","삼바"], "207940.KS", "삼성바이오로직스", "KOSPI", "주식"],
+    [["현대차","현대자동차"], "005380.KS", "현대차", "KOSPI", "주식"],
+    [["기아"], "000270.KS", "기아", "KOSPI", "주식"],
+    [["셀트리온"], "068270.KS", "셀트리온", "KOSPI", "주식"],
+    [["네이버","naver"], "035420.KS", "NAVER", "KOSPI", "주식"],
+    [["카카오","kakao"], "035720.KS", "카카오", "KOSPI", "주식"],
+    [["한화에어로스페이스","한화에어로"], "012450.KS", "한화에어로스페이스", "KOSPI", "주식"],
+    [["두산에너빌리티"], "034020.KS", "두산에너빌리티", "KOSPI", "주식"],
+    [["포스코홀딩스","포스코"], "005490.KS", "POSCO홀딩스", "KOSPI", "주식"],
+    [["엘지화학","lg화학"], "051910.KS", "LG화학", "KOSPI", "주식"],
+    [["kb금융","케이비금융"], "105560.KS", "KB금융", "KOSPI", "주식"],
+    [["신한지주"], "055550.KS", "신한지주", "KOSPI", "주식"],
+    [["알테오젠"], "196170.KQ", "알테오젠", "KOSDAQ", "주식"],
+    [["에코프로비엠"], "247540.KQ", "에코프로비엠", "KOSDAQ", "주식"],
+    [["에코프로"], "086520.KQ", "에코프로", "KOSDAQ", "주식"],
+    [["코덱스200","kodex200","kodex 200"], "069500.KS", "KODEX 200", "KOSPI", "ETF"],
+    [["타이거미국sp500","tiger 미국s&p500","타이거 s&p"], "360750.KS", "TIGER 미국S&P500", "KOSPI", "ETF"],
+    [["타이거미국나스닥","tiger 미국나스닥100"], "133690.KS", "TIGER 미국나스닥100", "KOSPI", "ETF"]
+  ];
+  function aliasMatch(q) {
+    var ql = q.toLowerCase().replace(/\s+/g, ""), out = [];
+    if (ql.length < 2) return out;
+    ALIAS.forEach(function (a) {
+      var hit = a[0].some(function (k) {
+        var kk = k.replace(/\s+/g, "");
+        return kk.indexOf(ql) === 0 || ql.indexOf(kk) === 0;
+      });
+      if (hit) out.push({ symbol: a[1], name: a[2], exch: a[3], type: a[4], alias: true });
+    });
+    return out.slice(0, 6);
+  }
+  function mergeItems(alias, net) {
+    var seen = {}, out = [];
+    alias.concat(net).forEach(function (it) {
+      if (seen[it.symbol]) return;
+      seen[it.symbol] = 1;
+      out.push(it);
+    });
+    return out.slice(0, 7);
+  }
+
   var sstate = { pick: null, chart: null };
   var ssug = { items: [], active: -1, timer: null, ctrl: null };
   var sStatus = statusCtl("st-status");
@@ -995,26 +1093,27 @@
   }
 
   // ── 종목 자동완성 ──
+  var TYPE_KO = { EQUITY: "주식", ETF: "ETF", INDEX: "지수", CURRENCY: "환율", MUTUALFUND: "펀드" };
   function yToItems(d) {
     var seen = {}, out = [];
     ((d && d.quotes) || []).forEach(function (q) {
       if (!q.symbol) return;
       var type = q.quoteType || "";
-      if (type !== "EQUITY" && type !== "ETF" && type !== "INDEX") return;
+      if (!TYPE_KO[type]) return;
       if (seen[q.symbol]) return;
       seen[q.symbol] = 1;
       out.push({
         symbol: q.symbol,
         name: q.shortname || q.longname || q.symbol,
         exch: q.exchDisp || q.exchange || "",
-        type: q.typeDisp || type
+        type: q.typeDisp || TYPE_KO[type]
       });
     });
-    return out.slice(0, 6);
+    return out.slice(0, 7);
   }
   function searchStocks(q, ctrl) {
     var url = Y_SEARCH + "?q=" + encodeURIComponent(q) +
-      "&quotesCount=6&newsCount=0&listsCount=0&lang=ko-KR&region=KR";
+      "&quotesCount=8&newsCount=0&listsCount=0";
     return viaProxy(url, false, ctrl).then(yToItems);
   }
 
@@ -1043,23 +1142,37 @@
     for (var i = 0; i < kids.length; i++) kids[i].className = "sug-item" + (i === ssug.active ? " active" : "");
   }
 
+  function sSearching(q) {
+    ssug.items = []; ssug.active = -1;
+    sSugEl.innerHTML = '<div class="sug-empty">🔍 ‘' + esc(q) + "’ 검색 중…</div>";
+    sSugEl.className = "suggest show";
+  }
+  function stillTyping(q) { // 응답 도착 시 입력이 이어져 있어도 접두어면 표시
+    var cur = sInput.value.trim();
+    return cur === q || cur.indexOf(q) === 0 || q.indexOf(cur) === 0;
+  }
   sInput.addEventListener("input", function () {
     var q = sInput.value.trim();
     if (ssug.timer) clearTimeout(ssug.timer);
     if (ssug.ctrl) { ssug.ctrl.abort(); ssug.ctrl = null; }
     if (q.length < 2) { sHide(); return; }
     ssug.timer = setTimeout(function () {
+      var aliasItems = aliasMatch(q);
+      if (aliasItems.length) sRender(aliasItems);   // 별칭 사전은 즉시 표시
+      else sSearching(q);                            // 없으면 검색 중 표시
       var ctrl = ("AbortController" in window) ? new AbortController() : null;
       ssug.ctrl = ctrl;
       searchStocks(q, ctrl)
         .then(function (items) {
-          if (sInput.value.trim() !== q) return;
-          sRender(items, "‘" + q + "’ 검색 결과가 없어요 — 종목명이나 티커로 다시 검색해 보세요");
+          if (!stillTyping(q)) return;
+          var merged = mergeItems(aliasItems, items);
+          sRender(merged, "‘" + q + "’ 검색 결과가 없어요 — 종목명(한글은 인기 종목만)이나 티커로 검색해 보세요");
         })["catch"](function (e) {
           if (e && e.name === "AbortError") return;
-          sRender([], "검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요");
+          if (!aliasItems.length && stillTyping(q))
+            sRender([], "검색이 잠시 안 돼요 — 티커(예: TSLA)로 입력하거나 잠시 후 다시 시도해 주세요");
         });
-    }, 300);
+    }, 250);
   });
   sInput.addEventListener("keydown", function (e) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -1069,15 +1182,16 @@
       sMark();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (ssug.items.length) sPick(ssug.items[ssug.active >= 0 ? ssug.active : 0]);
-      else if (sInput.value.trim().length >= 2) {
-        var q = sInput.value.trim();
-        sStatus("‘" + q + "’ 종목을 찾는 중…");
-        searchStocks(q).then(function (items) {
-          if (items.length) sPick(items[0]);
-          else sStatus("‘" + q + "’ 종목을 찾지 못했어요", true);
-        })["catch"](function () { sStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
-      }
+      if (ssug.items.length) { sPick(ssug.items[ssug.active >= 0 ? ssug.active : 0]); return; }
+      var q = sInput.value.trim();
+      if (q.length < 2) return;
+      var aliasItems = aliasMatch(q);
+      if (aliasItems.length) { sPick(aliasItems[0]); return; }
+      sStatus("‘" + q + "’ 종목을 찾는 중…");
+      searchStocks(q).then(function (items) {
+        if (items.length) sPick(items[0]);
+        else sStatus("‘" + q + "’ 종목을 찾지 못했어요 — 티커로 검색해 보세요", true);
+      })["catch"](function () { sStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
     } else if (e.key === "Escape") sHide();
   });
   sInput.addEventListener("blur", function () { setTimeout(sHide, 150); });
