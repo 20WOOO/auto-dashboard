@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
-<meta name="description" content="동네를 검색하면 현재 날씨 → 주간 예보 → 내일 옷차림까지 단계별 시작 버튼으로 실행되는 자동화 대시보드">
+<meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -22,6 +22,8 @@
     --accent-soft: #9ec5f4;
     --accent-press: #256abf;
     --critical: #d03b3b;
+    --up: #d03b3b;    /* 국내 관례: 상승 빨강 */
+    --down: #2a78d6;  /* 하락 파랑 */
     --tile: rgba(11, 11, 11, 0.025);
     --shadow: 0 8px 24px rgba(11, 11, 11, 0.12);
   }
@@ -39,6 +41,8 @@
       --accent-soft: #1c5cab;
       --accent-press: #2a78d6;
       --critical: #e66767;
+      --up: #e66767;
+      --down: #5598e7;
       --tile: rgba(255, 255, 255, 0.035);
       --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
@@ -55,9 +59,19 @@
   }
   .wrap { max-width: 620px; margin: 0 auto; }
 
-  header.page { margin: 6px 4px 18px; }
+  header.page { margin: 6px 4px 14px; }
   header.page h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   header.page p { margin-top: 4px; font-size: 13px; color: var(--muted); }
+
+  /* ── 프로젝트 탭 ─────────────────── */
+  .tabs { display: flex; gap: 7px; margin: 0 2px 14px; }
+  .tab {
+    padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--hairline); background: none; color: var(--ink-2);
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab.ghost { border-style: dashed; color: var(--muted); cursor: default; font-weight: 400; }
 
   .card {
     background: var(--surface);
@@ -105,6 +119,13 @@
   .picked .default-tag { font-weight: 400; color: var(--muted); }
   .status { min-height: 18px; margin-top: 4px; font-size: 12.5px; color: var(--muted); text-align: center; }
   .status.error { color: var(--critical); font-weight: 600; }
+  .alt-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+  .chip {
+    border: 1px solid var(--hairline); border-radius: 999px;
+    background: none; color: var(--ink-2);
+    font-family: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
 
   /* ── 순서도(플로우) ───────────────── */
   .flow { margin-top: 16px; }
@@ -166,7 +187,7 @@
   }
   .rerun:hover { color: var(--accent); }
 
-  /* 1단계: 현재 날씨 */
+  /* 날씨 1단계 */
   .date-line { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 4px; }
   .hero { display: flex; align-items: center; gap: 14px; padding: 4px 0 14px; }
   .hero .icon { font-size: 42px; line-height: 1; }
@@ -179,7 +200,7 @@
   .tile .value { font-size: 17px; font-weight: 600; }
   .tile .value .unit { font-size: 12.5px; font-weight: 500; color: var(--ink-2); margin-left: 1px; }
 
-  /* 2단계: 주간 예보 */
+  /* 날씨 2단계 */
   .day-row {
     display: grid; grid-template-columns: 52px 30px 52px 1fr;
     align-items: center; gap: 6px;
@@ -201,7 +222,7 @@
     background: linear-gradient(90deg, var(--accent-soft), var(--accent));
   }
 
-  /* 3단계: 옷차림 */
+  /* 날씨 3단계 */
   .outfit-sum { font-size: 13px; color: var(--ink-2); margin: 4px 0 10px; }
   .outfit-head { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
   .oitems { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
@@ -212,19 +233,52 @@
   .otips { display: flex; flex-direction: column; gap: 5px; }
   .otip { font-size: 12.5px; color: var(--ink-2); }
 
+  /* 주식 */
+  .q-name { font-size: 15px; font-weight: 700; margin: 6px 0 0; }
+  .q-sym { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .price-row { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 10px; flex-wrap: wrap; }
+  .q-price { font-size: 44px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; }
+  .chg { font-size: 14px; font-weight: 700; }
+  .pos { color: var(--up); }
+  .neg { color: var(--down); }
+  .flat { color: var(--muted); }
+  .spark-cap { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+  .spark { margin-bottom: 12px; }
+  .spark svg { display: block; width: 100%; height: 64px; }
+  .news-item { display: block; padding: 9px 2px; border-bottom: 1px solid var(--hairline); text-decoration: none; }
+  .news-item:last-child { border-bottom: none; }
+  .news-title { font-size: 13.5px; color: var(--ink); font-weight: 600; line-height: 1.45; }
+  .news-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .ind-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 6px 0 12px; }
+  @media (max-width: 400px) { .ind-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ind-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+  .ind-row .k { color: var(--muted); }
+  .ind-row .v { font-weight: 600; text-align: right; }
+  .meter { height: 8px; border-radius: 4px; background: var(--tile); position: relative; margin: 10px 2px 5px; }
+  .meter .mfill { position: absolute; left: 0; top: 0; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent-soft), var(--accent)); }
+  .meter .mdot { position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); transform: translateX(-50%); }
+  .meter-lab { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .sum-box { background: var(--tile); border-radius: 11px; padding: 11px 13px; margin: 10px 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .link-row { margin-top: 4px; }
+  .link-btn {
+    display: inline-block; border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+    color: var(--accent); text-decoration: none; margin: 2px 6px 2px 0;
+  }
+  .link-btn:hover { border-color: var(--accent); }
+  .disclaim { font-size: 11px; color: var(--muted); margin-top: 10px; }
+
   .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
   .connector::after {
     content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
     border-left: 5px solid transparent; border-right: 5px solid transparent;
     border-top: 6px solid var(--hairline);
   }
-
   .ghost-node {
     border: 1px dashed var(--hairline); border-radius: 14px;
     padding: 13px 14px; text-align: center;
     color: var(--muted); font-size: 12.5px; line-height: 1.5;
   }
-
   .card-foot {
     margin-top: 16px; padding-top: 11px;
     border-top: 1px solid var(--hairline);
@@ -232,7 +286,6 @@
     font-size: 11px; color: var(--muted);
   }
   .card-foot a { color: var(--muted); }
-
   .ghost-card {
     border: 1px dashed var(--hairline); border-radius: 16px;
     padding: 18px; text-align: center;
@@ -244,10 +297,17 @@
 <div class="wrap">
   <header class="page">
     <h1>⚡ 자동화 대시보드</h1>
-    <p>동네를 검색해 선택하고, 각 단계의 시작 버튼을 누르세요</p>
+    <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
-  <section class="card">
+  <nav class="tabs">
+    <button class="tab active" id="tab-weather" type="button">🌦️ 날씨</button>
+    <button class="tab" id="tab-stock" type="button">📈 주식</button>
+    <span class="tab ghost">＋</span>
+  </nav>
+
+  <!-- ═══════════ 프로젝트: 날씨 ═══════════ -->
+  <section class="card proj" id="proj-weather">
     <div class="card-head">
       <h2>🌦️ 날씨 자동화</h2>
       <div class="stamp" id="stamp">아직 실행 전</div>
@@ -262,8 +322,6 @@
     <div class="status" id="status">다른 동네로 바꾸려면 위에서 검색하세요 (동·구 단위 가능)</div>
 
     <div class="flow">
-
-      <!-- 1단계: 현재 날씨 -->
       <section class="node" id="node1">
         <button class="node-head" id="head1" type="button">
           <span class="stepchip">1</span>
@@ -298,7 +356,6 @@
 
       <div class="connector"></div>
 
-      <!-- 2단계: 주간 예보 -->
       <section class="node locked" id="node2">
         <button class="node-head" id="head2" type="button" aria-expanded="false">
           <span class="stepchip">2</span>
@@ -318,7 +375,6 @@
 
       <div class="connector"></div>
 
-      <!-- 3단계: 내일 옷차림 -->
       <section class="node locked" id="node3">
         <button class="node-head" id="head3" type="button" aria-expanded="false">
           <span class="stepchip">3</span>
@@ -337,7 +393,6 @@
       </section>
 
       <div class="connector"></div>
-
       <div class="ghost-node">＋ 4단계 — 다음 자동화가 들어갈 자리<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
     </div>
 
@@ -347,8 +402,90 @@
     </div>
   </section>
 
+  <!-- ═══════════ 프로젝트: 주식 ═══════════ -->
+  <section class="card proj" id="proj-stock" hidden>
+    <div class="card-head">
+      <h2>📈 주식 자동화</h2>
+      <div class="stamp" id="st-stamp">아직 실행 전</div>
+    </div>
+
+    <div class="search-wrap">
+      <input id="st-input" type="search" placeholder="종목명·티커 검색 (예: 삼성전자, SK하이닉스, AAPL)"
+             autocomplete="off" enterkeyhint="search" aria-label="종목 검색">
+      <div class="suggest" id="st-suggest" role="listbox"></div>
+    </div>
+    <div class="picked" id="st-picked">📈 <span class="default-tag">종목을 검색해 선택하세요</span></div>
+    <div class="status" id="st-status">한국·해외 주식, ETF, 지수 모두 검색됩니다</div>
+    <div class="alt-row" id="st-recent"></div>
+
+    <div class="flow">
+      <section class="node locked" id="stnode1">
+        <button class="node-head" id="sthead1" type="button">
+          <span class="stepchip">1</span>
+          <div class="node-title">기본 주가 정보 <span class="node-sub" id="stsub1">종목 검색 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="ststart1" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 1단계 시작 — 기본 주가</span>
+          </button>
+          <div id="stcontent1" hidden>
+            <div id="st-quote"></div>
+            <div class="rerun-row"><button class="rerun" id="strerun1" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <section class="node locked" id="stnode2">
+        <button class="node-head" id="sthead2" type="button" aria-expanded="false">
+          <span class="stepchip">2</span>
+          <div class="node-title">관련 뉴스 <span class="node-sub" id="stsub2">1단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="ststart2" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 2단계 시작 — 관련 뉴스</span>
+          </button>
+          <div id="stcontent2" hidden>
+            <div id="st-news"></div>
+            <div class="rerun-row"><button class="rerun" id="strerun2" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+
+      <section class="node locked" id="stnode3">
+        <button class="node-head" id="sthead3" type="button" aria-expanded="false">
+          <span class="stepchip">3</span>
+          <div class="node-title">투자 지표 분석 <span class="node-sub" id="stsub3">2단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <button class="step-start" id="ststart3" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 3단계 시작 — 지표 분석</span>
+          </button>
+          <div id="stcontent3" hidden>
+            <div id="st-ind"></div>
+            <div class="rerun-row"><button class="rerun" id="strerun3" type="button">🔄 이 단계 다시 실행</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+      <div class="ghost-node">＋ 4단계 — 예: 실적 캘린더 · 관심종목 아침 브리핑 · 지수/환율 시황<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
+    </div>
+
+    <div class="card-foot">
+      <span>시세: Yahoo Finance (지연 시세 가능) · 뉴스: Google News</span>
+      <span>참고용 · 투자 권유 아님</span>
+    </div>
+  </section>
+
   <section class="ghost-card">
-    ＋ 새 자동화 카드가 들어갈 자리<br>
+    ＋ 새 프로젝트 탭이 들어갈 자리 (예: 뉴스 브리핑, 환율, 할 일)<br>
     Claude에게 요청해 대시보드를 확장할 수 있습니다
   </section>
 </div>
@@ -357,9 +494,123 @@
 (function () {
   "use strict";
 
-  // ── API ──────────────────────────────────────────────
-  var PHOTON_URL = "https://photon.komoot.io/api/";          // 자동완성(OSM 기반, 동/구 단위)
-  var OM_GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"; // 예비 검색
+  // ═══════════ 공통 유틸 ═══════════
+  function el(id) { return document.getElementById(id); }
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+  function arr(a, i) { return (a && a.length > i) ? num(a[i]) : null; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  }); }
+  function hasHangul(s) { return /[ㄱ-ㆎ가-힣]/.test(s); }
+
+  function fetchRaw(url, asText, ctrl) {
+    var own = !ctrl && ("AbortController" in window) ? new AbortController() : null;
+    var use = ctrl || own;
+    var timer = use && setTimeout(function () { use.abort(); }, 15000);
+    return fetch(url, use ? { signal: use.signal } : {})
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return asText ? res.text() : res.json();
+      })
+      .then(function (d) { if (timer) clearTimeout(timer); return d; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+  function fetchJson(url, ctrl) { return fetchRaw(url, false, ctrl); }
+
+  // CORS 중계 서버(무료) — 1순위 실패 시 2순위로 재시도
+  var PROXIES = [
+    function (u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+    function (u) { return "https://corsproxy.io/?url=" + encodeURIComponent(u); }
+  ];
+  function viaProxy(url, asText, ctrl) {
+    var i = 0;
+    function attempt() {
+      return fetchRaw(PROXIES[i](url), asText, ctrl)["catch"](function (e) {
+        if (e && e.name === "AbortError") throw e;
+        i += 1;
+        if (i < PROXIES.length) return attempt();
+        throw e;
+      });
+    }
+    return attempt();
+  }
+
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  function statusCtl(id) {
+    return function (msg, isError) {
+      var s = el(id);
+      s.className = isError ? "status error" : "status";
+      s.textContent = msg;
+    };
+  }
+  function stampNow(id) {
+    el(id).textContent = "마지막 업데이트 " +
+      new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+  }
+
+  // ═══════════ 단계(순서도) 상태 기계 ═══════════
+  // 상태: locked(잠김) / ready(시작 대기) / done(완료)
+  function flowCtl(cfg) {
+    function nid(kind, n) { return cfg.pre + kind + n; }
+    function node(n) { return el(nid("node", n)); }
+    function setNode(n, st) {
+      var nd = node(n), start = el(nid("start", n)), content = el(nid("content", n)), sub = el(nid("sub", n));
+      nd.classList.remove("locked", "open", "done");
+      if (st === "locked") {
+        nd.classList.add("locked");
+        sub.textContent = cfg.lock[n];
+        start.hidden = false; content.hidden = true;
+      } else if (st === "ready") {
+        nd.classList.add("open");
+        sub.textContent = "시작 버튼을 누르세요";
+        start.hidden = false; content.hidden = true;
+      } else {
+        nd.classList.add("open", "done");
+        sub.textContent = "";
+        start.hidden = true; content.hidden = false;
+      }
+    }
+    function isDone(n) { return node(n).classList.contains("done"); }
+    function isLocked(n) { return node(n).classList.contains("locked"); }
+    function busy(n) { return el(nid("start", n)).disabled; }
+    function setLoading(n, on) {
+      var b = el(nid("start", n));
+      b.disabled = on;
+      b.classList.toggle("loading", on);
+      b.querySelector(".lbl").textContent = on ? "실행 중…" : cfg.labels[n];
+    }
+    function bindHead(n, runFn) {
+      el(nid("head", n)).addEventListener("click", function () {
+        if (isLocked(n)) return;
+        if (isDone(n)) {
+          var nd = node(n);
+          nd.classList.toggle("open");
+          el(nid("head", n)).setAttribute("aria-expanded", nd.classList.contains("open") ? "true" : "false");
+        } else runFn();
+      });
+    }
+    return { setNode: setNode, isDone: isDone, isLocked: isLocked, busy: busy, setLoading: setLoading, bindHead: bindHead };
+  }
+
+  // ═══════════ 탭 ═══════════
+  function showTab(which) {
+    el("proj-weather").hidden = which !== "weather";
+    el("proj-stock").hidden = which !== "stock";
+    el("tab-weather").className = "tab" + (which === "weather" ? " active" : "");
+    el("tab-stock").className = "tab" + (which === "stock" ? " active" : "");
+    try { history.replaceState(null, "", "#" + which); } catch (e) {}
+  }
+  el("tab-weather").addEventListener("click", function () { showTab("weather"); });
+  el("tab-stock").addEventListener("click", function () { showTab("stock"); });
+  if (location.hash === "#stock") showTab("stock");
+
+  // ═════════════════════════════════════════════
+  //  프로젝트 1: 날씨
+  // ═════════════════════════════════════════════
+  var PHOTON_URL = "https://photon.komoot.io/api/";
+  var OM_GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
   var FC_URL = "https://api.open-meteo.com/v1/forecast";
 
   var WMO = {
@@ -380,29 +631,8 @@
   };
   var DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-  // ── 상태 ─────────────────────────────────────────────
-  var state = {
-    place: { name: "서울", region: "대한민국", latitude: 37.5665, longitude: 126.978, isDefault: true },
-    cur: null,   // 1단계 응답
-    week: null   // 2단계 응답
-  };
-  var sug = { items: [], active: -1, timer: null, ctrl: null };
-
-  var input = document.getElementById("loc-input");
-  var sugEl = document.getElementById("suggest");
-  var statusEl = document.getElementById("status");
-  var stamp = document.getElementById("stamp");
-
-  function el(id) { return document.getElementById(id); }
-  function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
-  function arr(a, i) { return (a && a.length > i) ? num(a[i]) : null; }
-  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-  }); }
   function deg(v) { return v === null ? "—" : Math.round(v) + '<span class="unit">°</span>'; }
   function wmo(code) { return (code !== null && WMO[code]) || ["정보 없음", "🌡️", "🌡️"]; }
-  function hasHangul(s) { return /[ㄱ-ㆎ가-힣]/.test(s); }
-
   function dateParts(ds) {
     var p = (ds || "").split("-").map(Number);
     if (p.length < 3 || !p[0]) return { w: "?", md: "?" };
@@ -410,25 +640,19 @@
     return { w: DAYS[d.getUTCDay()], md: p[1] + "." + p[2] };
   }
 
-  function fetchJson(url, ctrl) {
-    var own = !ctrl && ("AbortController" in window) ? new AbortController() : null;
-    var use = ctrl || own;
-    var timer = use && setTimeout(function () { use.abort(); }, 12000);
-    return fetch(url, use ? { signal: use.signal } : {})
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function (d) { if (timer) clearTimeout(timer); return d; },
-            function (e) { if (timer) clearTimeout(timer); throw e; });
-  }
+  var wstate = {
+    place: { name: "서울", region: "대한민국", latitude: 37.5665, longitude: 126.978, isDefault: true },
+    cur: null, week: null
+  };
+  var wsug = { items: [], active: -1, timer: null, ctrl: null };
+  var wStatus = statusCtl("status");
+  var wflow = flowCtl({
+    pre: "",
+    lock: { 1: "위치 선택 후 시작할 수 있어요", 2: "1단계 완료 후 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" },
+    labels: { 1: "▶ 1단계 시작 — 현재 날씨", 2: "▶ 2단계 시작 — 1주일 예보", 3: "▶ 3단계 시작 — 옷차림 추천" }
+  });
+  var wInput = el("loc-input"), wSugEl = el("suggest");
 
-  function setStatus(msg, isError) {
-    statusEl.className = isError ? "status error" : "status";
-    statusEl.textContent = msg;
-  }
-
-  // ── 자동완성 ─────────────────────────────────────────
   function photonToPlaces(d) {
     var seen = {}, out = [];
     ((d && d.features) || []).forEach(function (f) {
@@ -446,202 +670,129 @@
     });
     return out.slice(0, 6);
   }
-
   function omToPlaces(d) {
     return ((d && d.results) || []).map(function (r) {
       var parts = [r.admin1, r.country].filter(function (x) { return x && x !== r.name; });
       return { name: r.name, region: parts.join(" · "), latitude: r.latitude, longitude: r.longitude };
     });
   }
-
   function searchPlaces(q, ctrl) {
     var url = PHOTON_URL + "?q=" + encodeURIComponent(q) + "&limit=6" + (hasHangul(q) ? "" : "&lang=en");
     return fetchJson(url, ctrl).then(photonToPlaces).then(function (places) {
       if (places.length) return places;
-      // Photon에서 못 찾으면 Open-Meteo 지오코딩으로 한 번 더
       return fetchJson(OM_GEO_URL + "?name=" + encodeURIComponent(q) + "&count=5&language=ko&format=json")
         .then(omToPlaces)["catch"](function () { return []; });
     });
   }
 
-  function hideSuggest() { sugEl.className = "suggest"; sugEl.innerHTML = ""; sug.items = []; sug.active = -1; }
-
-  function renderSuggest(places, emptyMsg) {
-    sug.items = places; sug.active = -1;
-    sugEl.innerHTML = "";
+  function wHide() { wSugEl.className = "suggest"; wSugEl.innerHTML = ""; wsug.items = []; wsug.active = -1; }
+  function wRender(places, emptyMsg) {
+    wsug.items = places; wsug.active = -1;
+    wSugEl.innerHTML = "";
     if (!places.length) {
-      if (emptyMsg) {
-        sugEl.innerHTML = '<div class="sug-empty">' + esc(emptyMsg) + "</div>";
-        sugEl.className = "suggest show";
-      } else hideSuggest();
+      if (emptyMsg) { wSugEl.innerHTML = '<div class="sug-empty">' + esc(emptyMsg) + "</div>"; wSugEl.className = "suggest show"; }
+      else wHide();
       return;
     }
-    places.forEach(function (p, i) {
+    places.forEach(function (p) {
       var b = document.createElement("button");
-      b.type = "button";
-      b.className = "sug-item";
-      b.setAttribute("role", "option");
+      b.type = "button"; b.className = "sug-item"; b.setAttribute("role", "option");
       b.innerHTML = '<div class="s-name">📍 ' + esc(p.name) + '</div>' +
         (p.region ? '<div class="s-region">' + esc(p.region) + "</div>" : "");
-      // blur보다 먼저 처리되도록 pointerdown 사용
-      b.addEventListener("pointerdown", function (e) { e.preventDefault(); pick(p); });
-      b.addEventListener("click", function (e) { e.preventDefault(); pick(p); });
-      sugEl.appendChild(b);
+      b.addEventListener("pointerdown", function (e) { e.preventDefault(); wPick(p); });
+      b.addEventListener("click", function (e) { e.preventDefault(); wPick(p); });
+      wSugEl.appendChild(b);
     });
-    sugEl.className = "suggest show";
+    wSugEl.className = "suggest show";
+  }
+  function wMark() {
+    var kids = wSugEl.querySelectorAll(".sug-item");
+    for (var i = 0; i < kids.length; i++) kids[i].className = "sug-item" + (i === wsug.active ? " active" : "");
   }
 
-  function markActive() {
-    var kids = sugEl.querySelectorAll(".sug-item");
-    for (var i = 0; i < kids.length; i++) kids[i].className = "sug-item" + (i === sug.active ? " active" : "");
-  }
-
-  input.addEventListener("input", function () {
-    var q = input.value.trim();
-    if (sug.timer) clearTimeout(sug.timer);
-    if (sug.ctrl) { sug.ctrl.abort(); sug.ctrl = null; }
-    if (q.length < 2) { hideSuggest(); return; }
-    sug.timer = setTimeout(function () {
+  wInput.addEventListener("input", function () {
+    var q = wInput.value.trim();
+    if (wsug.timer) clearTimeout(wsug.timer);
+    if (wsug.ctrl) { wsug.ctrl.abort(); wsug.ctrl = null; }
+    if (q.length < 2) { wHide(); return; }
+    wsug.timer = setTimeout(function () {
       var ctrl = ("AbortController" in window) ? new AbortController() : null;
-      sug.ctrl = ctrl;
+      wsug.ctrl = ctrl;
       searchPlaces(q, ctrl)
         .then(function (places) {
-          if (input.value.trim() !== q) return; // 오래된 응답 무시
-          renderSuggest(places, "‘" + q + "’ 검색 결과가 없어요 — 조금 더 길게 입력해 보세요");
+          if (wInput.value.trim() !== q) return;
+          wRender(places, "‘" + q + "’ 검색 결과가 없어요 — 조금 더 길게 입력해 보세요");
         })["catch"](function (e) {
           if (e && e.name === "AbortError") return;
-          renderSuggest([], "검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요");
+          wRender([], "검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요");
         });
     }, 280);
   });
-
-  input.addEventListener("keydown", function (e) {
+  wInput.addEventListener("keydown", function (e) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      if (!sug.items.length) return;
+      if (!wsug.items.length) return;
       e.preventDefault();
-      var d = e.key === "ArrowDown" ? 1 : -1;
-      sug.active = (sug.active + d + sug.items.length) % sug.items.length;
-      markActive();
+      wsug.active = (wsug.active + (e.key === "ArrowDown" ? 1 : -1) + wsug.items.length) % wsug.items.length;
+      wMark();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (sug.items.length) pick(sug.items[sug.active >= 0 ? sug.active : 0]);
-      else if (input.value.trim().length >= 2) {
-        var q = input.value.trim();
-        setStatus("‘" + q + "’ 위치를 찾는 중…");
+      if (wsug.items.length) wPick(wsug.items[wsug.active >= 0 ? wsug.active : 0]);
+      else if (wInput.value.trim().length >= 2) {
+        var q = wInput.value.trim();
+        wStatus("‘" + q + "’ 위치를 찾는 중…");
         searchPlaces(q).then(function (places) {
-          if (places.length) pick(places[0]);
-          else setStatus("‘" + q + "’ 위치를 찾지 못했어요 — 다른 표기로 검색해 보세요", true);
-        })["catch"](function () { setStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
+          if (places.length) wPick(places[0]);
+          else wStatus("‘" + q + "’ 위치를 찾지 못했어요 — 다른 표기로 검색해 보세요", true);
+        })["catch"](function () { wStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
       }
-    } else if (e.key === "Escape") hideSuggest();
+    } else if (e.key === "Escape") wHide();
   });
+  wInput.addEventListener("blur", function () { setTimeout(wHide, 150); });
 
-  input.addEventListener("blur", function () { setTimeout(hideSuggest, 150); });
-
-  // ── 위치 선택 → 단계 리셋 ────────────────────────────
   function placeLabel(p) { return p.name + (p.region ? " · " + p.region : ""); }
-
-  function pick(p) {
-    state.place = p;
-    state.cur = null;
-    state.week = null;
-    hideSuggest();
-    input.value = "";
-    input.blur();
+  function wPick(p) {
+    wstate.place = p;
+    wstate.cur = null; wstate.week = null;
+    wHide(); wInput.value = ""; wInput.blur();
     el("picked").innerHTML = "📍 " + esc(placeLabel(p));
     el("coord-line").textContent = "위치: " + placeLabel(p) +
       " (" + (Math.round(p.latitude * 100) / 100) + ", " + (Math.round(p.longitude * 100) / 100) + ")";
-    setStatus("위치가 설정됐어요 — 1단계 시작을 누르세요");
-    stamp.textContent = "아직 실행 전";
-    setNode(1, "ready");
-    setNode(2, "locked");
-    setNode(3, "locked");
+    wStatus("위치가 설정됐어요 — 1단계 시작을 누르세요");
+    el("stamp").textContent = "아직 실행 전";
+    wflow.setNode(1, "ready"); wflow.setNode(2, "locked"); wflow.setNode(3, "locked");
   }
 
-  // ── 단계 상태 기계 ───────────────────────────────────
-  // 상태: locked(잠김) / ready(시작 대기) / done(완료·펼침/접힘)
-  var LOCK_MSG = { 1: "위치 선택 후 시작할 수 있어요", 2: "1단계 완료 후 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" };
-
-  function setNode(n, st) {
-    var node = el("node" + n), start = el("start" + n), content = el("content" + n), sub = el("sub" + n);
-    node.classList.remove("locked", "open", "done");
-    if (st === "locked") {
-      node.classList.add("locked");
-      sub.textContent = LOCK_MSG[n];
-      start.hidden = false; content.hidden = true;
-    } else if (st === "ready") {
-      node.classList.add("open");
-      sub.textContent = "시작 버튼을 누르세요";
-      start.hidden = false; content.hidden = true;
-    } else { // done
-      node.classList.add("open", "done");
-      sub.textContent = "";
-      start.hidden = true; content.hidden = false;
-    }
-  }
-
-  function isDone(n) { return el("node" + n).classList.contains("done"); }
-  function isLocked(n) { return el("node" + n).classList.contains("locked"); }
-
-  function setLoading(n, on) {
-    var b = el("start" + n);
-    b.disabled = on;
-    b.classList.toggle("loading", on);
-    b.querySelector(".lbl").textContent = on ? "실행 중…" :
-      (n === 1 ? "▶ 1단계 시작 — 현재 날씨" : n === 2 ? "▶ 2단계 시작 — 1주일 예보" : "▶ 3단계 시작 — 옷차림 추천");
-  }
-
-  function stampNow() {
-    stamp.textContent = "마지막 업데이트 " +
-      new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
-  }
-
-  // head 클릭: done이면 접기/펼치기, ready면 시작과 동일
-  function bindHead(n, runFn) {
-    el("head" + n).addEventListener("click", function () {
-      if (isLocked(n)) return;
-      var node = el("node" + n);
-      if (isDone(n)) {
-        node.classList.toggle("open");
-        el("head" + n).setAttribute("aria-expanded", node.classList.contains("open") ? "true" : "false");
-      } else runFn();
-    });
-  }
-
-  // ── 1단계: 현재 날씨 ─────────────────────────────────
-  function runStep1() {
-    if (isLocked(1) || el("start1").disabled) return;
-    setLoading(1, true);
-    setStatus(state.place.name + " 현재 날씨를 불러오는 중…");
-    var url = FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+  function runW1() {
+    if (wflow.isLocked(1) || wflow.busy(1)) return;
+    wflow.setLoading(1, true);
+    wStatus(wstate.place.name + " 현재 날씨를 불러오는 중…");
+    var url = FC_URL + "?latitude=" + wstate.place.latitude + "&longitude=" + wstate.place.longitude +
       "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
       "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
       "&timezone=auto&forecast_days=1";
     fetchJson(url)
       .then(function (data) {
         if (!data || !data.current) throw new Error("bad payload");
-        state.cur = data;
-        renderStep1();
-        setNode(1, "done");
-        if (!isDone(2)) setNode(2, "ready");
-        stampNow();
-        setStatus("✓ 1단계 완료 — 2단계 시작을 눌러보세요");
+        wstate.cur = data;
+        renderW1();
+        wflow.setNode(1, "done");
+        if (!wflow.isDone(2)) wflow.setNode(2, "ready");
+        stampNow("stamp");
+        wStatus("✓ 1단계 완료 — 2단계 시작을 눌러보세요");
       })["catch"](function (err) {
-        setStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
+        wStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
           : "현재 날씨를 불러오지 못했어요 — 네트워크를 확인해 주세요", true);
       })
-      .then(function () { setLoading(1, false); });
+      .then(function () { wflow.setLoading(1, false); });
   }
-
-  function renderStep1() {
-    var cur = state.cur.current || {};
-    var daily = state.cur.daily || {};
+  function renderW1() {
+    var cur = wstate.cur.current || {};
+    var daily = wstate.cur.daily || {};
     var w = wmo(num(cur.weather_code));
     var t = num(cur.temperature_2m), feel = num(cur.apparent_temperature);
     var humid = num(cur.relative_humidity_2m), wind = num(cur.wind_speed_10m);
     var dp = dateParts(daily.time && daily.time[0]);
-    el("sub1").textContent = "";
-    el("date-line").textContent = dp.md + " (" + dp.w + ") · " + state.place.name;
+    el("date-line").textContent = dp.md + " (" + dp.w + ") · " + wstate.place.name;
     el("w-icon").textContent = cur.is_day !== 0 ? w[1] : w[2];
     el("w-temp").textContent = t === null ? "—" : Math.round(t * 10) / 10 + "°";
     el("w-cond").textContent = w[0] + (feel !== null ? " · 체감 " + Math.round(feel) + "°" : "");
@@ -654,32 +805,30 @@
       (arr(daily.precipitation_probability_max, 0));
   }
 
-  // ── 2단계: 주간 예보 ─────────────────────────────────
-  function runStep2() {
-    if (isLocked(2) || el("start2").disabled) return;
-    setLoading(2, true);
-    setStatus("1주일 예보를 불러오는 중…");
-    var url = FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+  function runW2() {
+    if (wflow.isLocked(2) || wflow.busy(2)) return;
+    wflow.setLoading(2, true);
+    wStatus("1주일 예보를 불러오는 중…");
+    var url = FC_URL + "?latitude=" + wstate.place.latitude + "&longitude=" + wstate.place.longitude +
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
       "&timezone=auto&forecast_days=7";
     fetchJson(url)
       .then(function (data) {
         if (!data || !data.daily || !data.daily.time) throw new Error("bad payload");
-        state.week = data;
-        renderStep2();
-        setNode(2, "done");
-        if (!isDone(3)) setNode(3, "ready");
-        stampNow();
-        setStatus("✓ 2단계 완료 — 3단계 시작을 눌러보세요");
+        wstate.week = data;
+        renderW2();
+        wflow.setNode(2, "done");
+        if (!wflow.isDone(3)) wflow.setNode(3, "ready");
+        stampNow("stamp");
+        wStatus("✓ 2단계 완료 — 3단계 시작을 눌러보세요");
       })["catch"](function (err) {
-        setStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
+        wStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
           : "예보를 불러오지 못했어요 — 네트워크를 확인해 주세요", true);
       })
-      .then(function () { setLoading(2, false); });
+      .then(function () { wflow.setLoading(2, false); });
   }
-
-  function renderStep2() {
-    var d = state.week.daily || {};
+  function renderW2() {
+    var d = wstate.week.daily || {};
     var n = (d.time || []).length;
     var weekMin = Infinity, weekMax = -Infinity, i;
     for (i = 0; i < n; i++) {
@@ -712,7 +861,6 @@
     el("week-body").innerHTML = html || '<div class="otip">예보 데이터가 없습니다.</div>';
   }
 
-  // ── 3단계: 내일 옷차림 ───────────────────────────────
   function outfitFor(hi, lo, pop, code, wind, uv, feelHi) {
     var items, head;
     if (hi === null) return { head: "데이터 부족", items: [], tips: ["예보 데이터가 없어 추천할 수 없습니다."] };
@@ -724,7 +872,6 @@
     else if (hi >= 9)  { head = "추운 날 — 코트가 필요해요"; items = ["🧥 트렌치코트·점퍼", "🧶 도톰한 니트", "🧣 얇은 목도리"]; }
     else if (hi >= 5)  { head = "많이 추움 — 두껍게 입으세요"; items = ["🧥 울 코트·가죽 자켓", "🧶 히트텍 + 니트 레이어드", "🧣 목도리"]; }
     else               { head = "한겨울 추위 — 완전 무장"; items = ["🧥 패딩·두꺼운 코트", "🧣 목도리·장갑", "🧦 기모 안감"]; }
-
     var tips = [];
     if (hi !== null && lo !== null && hi - lo >= 10)
       tips.push("🌡️ 일교차 " + Math.round(hi - lo) + "° — 아침·저녁용 겉옷 하나 더 챙기세요");
@@ -739,31 +886,27 @@
     return { head: head, items: items, tips: tips };
   }
 
-  function runStep3() {
-    if (isLocked(3) || el("start3").disabled) return;
-    setLoading(3, true);
-    setStatus("내일 옷차림을 계산하는 중…");
-    // 2단계 데이터가 있으면 재사용, 없으면(만일을 대비) 다시 불러옴
-    var p = state.week ? Promise.resolve(state.week)
-      : fetchJson(FC_URL + "?latitude=" + state.place.latitude + "&longitude=" + state.place.longitude +
+  function runW3() {
+    if (wflow.isLocked(3) || wflow.busy(3)) return;
+    wflow.setLoading(3, true);
+    wStatus("내일 옷차림을 계산하는 중…");
+    var p = wstate.week ? Promise.resolve(wstate.week)
+      : fetchJson(FC_URL + "?latitude=" + wstate.place.latitude + "&longitude=" + wstate.place.longitude +
           "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,uv_index_max" +
           "&timezone=auto&forecast_days=7");
     p.then(function (data) {
         if (!data || !data.daily) throw new Error("bad payload");
-        state.week = data;
-        renderStep3();
-        setNode(3, "done");
-        stampNow();
-        setStatus("✓ 3단계 완료 — 모든 단계가 끝났어요");
-      })["catch"](function () {
-        setStatus("옷차림 계산에 필요한 예보를 불러오지 못했어요", true);
-      })
-      .then(function () { setLoading(3, false); });
+        wstate.week = data;
+        renderW3();
+        wflow.setNode(3, "done");
+        stampNow("stamp");
+        wStatus("✓ 3단계 완료 — 모든 단계가 끝났어요");
+      })["catch"](function () { wStatus("옷차림 계산에 필요한 예보를 불러오지 못했어요", true); })
+      .then(function () { wflow.setLoading(3, false); });
   }
-
-  function renderStep3() {
-    var d = state.week.daily || {};
-    var i = 1; // 내일
+  function renderW3() {
+    var d = wstate.week.daily || {};
+    var i = 1;
     var hi = arr(d.temperature_2m_max, i), lo = arr(d.temperature_2m_min, i);
     var pop = arr(d.precipitation_probability_max, i);
     var code = arr(d.weather_code, i);
@@ -773,7 +916,6 @@
     var w = wmo(code);
     var dp = dateParts(d.time && d.time[i]);
     var o = outfitFor(hi, lo, pop, code, wind, uv, feelHi);
-
     el("outfit-body").innerHTML =
       '<div class="outfit-sum">내일 ' + dp.md + ' (' + dp.w + ') · ' + w[1] + ' ' + esc(w[0]) +
         ' · ' + (lo === null ? "–" : Math.round(lo) + "°") + ' ~ ' + (hi === null ? "–" : Math.round(hi) + "°") +
@@ -783,20 +925,447 @@
       '<div class="otips">' + o.tips.map(function (t) { return '<div class="otip">' + esc(t) + '</div>'; }).join("") + '</div>';
   }
 
-  // ── 바인딩 & 초기 상태 ───────────────────────────────
-  el("start1").addEventListener("click", runStep1);
-  el("start2").addEventListener("click", runStep2);
-  el("start3").addEventListener("click", runStep3);
-  el("rerun1").addEventListener("click", runStep1);
-  el("rerun2").addEventListener("click", runStep2);
-  el("rerun3").addEventListener("click", runStep3);
-  bindHead(1, runStep1);
-  bindHead(2, runStep2);
-  bindHead(3, runStep3);
+  el("start1").addEventListener("click", runW1);
+  el("start2").addEventListener("click", runW2);
+  el("start3").addEventListener("click", runW3);
+  el("rerun1").addEventListener("click", runW1);
+  el("rerun2").addEventListener("click", runW2);
+  el("rerun3").addEventListener("click", runW3);
+  wflow.bindHead(1, runW1);
+  wflow.bindHead(2, runW2);
+  wflow.bindHead(3, runW3);
+  wflow.setNode(1, "ready");
+  wflow.setNode(2, "locked");
+  wflow.setNode(3, "locked");
 
-  setNode(1, "ready"); // 기본 위치(서울)로 1단계는 바로 시작 가능
-  setNode(2, "locked");
-  setNode(3, "locked");
+  // ═════════════════════════════════════════════
+  //  프로젝트 2: 주식
+  // ═════════════════════════════════════════════
+  var Y_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search";
+  var Y_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/";
+
+  var sstate = { pick: null, chart: null };
+  var ssug = { items: [], active: -1, timer: null, ctrl: null };
+  var sStatus = statusCtl("st-status");
+  var sflow = flowCtl({
+    pre: "st",
+    lock: { 1: "종목 검색 후 시작할 수 있어요", 2: "1단계 완료 후 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" },
+    labels: { 1: "▶ 1단계 시작 — 기본 주가", 2: "▶ 2단계 시작 — 관련 뉴스", 3: "▶ 3단계 시작 — 지표 분석" }
+  });
+  var sInput = el("st-input"), sSugEl = el("st-suggest");
+
+  // ── 숫자 포맷 ──
+  function fmtPrice(v, cur) {
+    if (v === null || v === undefined || !isFinite(v)) return "—";
+    if (cur === "KRW") return Math.round(v).toLocaleString("ko-KR") + "원";
+    var s = v >= 100 ? v.toLocaleString("en-US", { maximumFractionDigits: 2 }) : v.toFixed(2);
+    if (cur === "USD") return "$" + s;
+    if (cur === "JPY") return "¥" + Math.round(v).toLocaleString("en-US");
+    if (cur === "EUR") return "€" + s;
+    return s + (cur ? " " + cur : "");
+  }
+  function fmtDelta(v, cur) {
+    if (v === null || !isFinite(v)) return "—";
+    var a = Math.abs(v);
+    var s = cur === "KRW" ? Math.round(a).toLocaleString("ko-KR") : (a >= 100 ? a.toLocaleString("en-US", { maximumFractionDigits: 2 }) : a.toFixed(2));
+    return s;
+  }
+  function fmtPct(v, digits) {
+    if (v === null || !isFinite(v)) return "—";
+    return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(digits === undefined ? 1 : digits) + "%";
+  }
+  function fmtCompact(v) {
+    if (v === null || !isFinite(v)) return "—";
+    try { return new Intl.NumberFormat("ko", { notation: "compact", maximumFractionDigits: 1 }).format(v); }
+    catch (e) { return Math.round(v).toLocaleString("ko-KR"); }
+  }
+  function udClass(v) { return v > 0 ? "pos" : v < 0 ? "neg" : "flat"; }
+  function relTime(dateStr) {
+    var t = new Date(dateStr).getTime();
+    if (!isFinite(t)) return "";
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "방금 전";
+    if (m < 60) return m + "분 전";
+    var h = Math.round(m / 60);
+    if (h < 24) return h + "시간 전";
+    var d = Math.round(h / 24);
+    if (d < 8) return d + "일 전";
+    var dd = new Date(t);
+    return (dd.getMonth() + 1) + "." + dd.getDate();
+  }
+
+  // ── 종목 자동완성 ──
+  function yToItems(d) {
+    var seen = {}, out = [];
+    ((d && d.quotes) || []).forEach(function (q) {
+      if (!q.symbol) return;
+      var type = q.quoteType || "";
+      if (type !== "EQUITY" && type !== "ETF" && type !== "INDEX") return;
+      if (seen[q.symbol]) return;
+      seen[q.symbol] = 1;
+      out.push({
+        symbol: q.symbol,
+        name: q.shortname || q.longname || q.symbol,
+        exch: q.exchDisp || q.exchange || "",
+        type: q.typeDisp || type
+      });
+    });
+    return out.slice(0, 6);
+  }
+  function searchStocks(q, ctrl) {
+    var url = Y_SEARCH + "?q=" + encodeURIComponent(q) +
+      "&quotesCount=6&newsCount=0&listsCount=0&lang=ko-KR&region=KR";
+    return viaProxy(url, false, ctrl).then(yToItems);
+  }
+
+  function sHide() { sSugEl.className = "suggest"; sSugEl.innerHTML = ""; ssug.items = []; ssug.active = -1; }
+  function sRender(items, emptyMsg) {
+    ssug.items = items; ssug.active = -1;
+    sSugEl.innerHTML = "";
+    if (!items.length) {
+      if (emptyMsg) { sSugEl.innerHTML = '<div class="sug-empty">' + esc(emptyMsg) + "</div>"; sSugEl.className = "suggest show"; }
+      else sHide();
+      return;
+    }
+    items.forEach(function (it) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "sug-item"; b.setAttribute("role", "option");
+      b.innerHTML = '<div class="s-name">📈 ' + esc(it.name) + '</div>' +
+        '<div class="s-region">' + esc(it.symbol) + (it.exch ? " · " + esc(it.exch) : "") + (it.type ? " · " + esc(it.type) : "") + "</div>";
+      b.addEventListener("pointerdown", function (e) { e.preventDefault(); sPick(it); });
+      b.addEventListener("click", function (e) { e.preventDefault(); sPick(it); });
+      sSugEl.appendChild(b);
+    });
+    sSugEl.className = "suggest show";
+  }
+  function sMark() {
+    var kids = sSugEl.querySelectorAll(".sug-item");
+    for (var i = 0; i < kids.length; i++) kids[i].className = "sug-item" + (i === ssug.active ? " active" : "");
+  }
+
+  sInput.addEventListener("input", function () {
+    var q = sInput.value.trim();
+    if (ssug.timer) clearTimeout(ssug.timer);
+    if (ssug.ctrl) { ssug.ctrl.abort(); ssug.ctrl = null; }
+    if (q.length < 2) { sHide(); return; }
+    ssug.timer = setTimeout(function () {
+      var ctrl = ("AbortController" in window) ? new AbortController() : null;
+      ssug.ctrl = ctrl;
+      searchStocks(q, ctrl)
+        .then(function (items) {
+          if (sInput.value.trim() !== q) return;
+          sRender(items, "‘" + q + "’ 검색 결과가 없어요 — 종목명이나 티커로 다시 검색해 보세요");
+        })["catch"](function (e) {
+          if (e && e.name === "AbortError") return;
+          sRender([], "검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요");
+        });
+    }, 300);
+  });
+  sInput.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!ssug.items.length) return;
+      e.preventDefault();
+      ssug.active = (ssug.active + (e.key === "ArrowDown" ? 1 : -1) + ssug.items.length) % ssug.items.length;
+      sMark();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (ssug.items.length) sPick(ssug.items[ssug.active >= 0 ? ssug.active : 0]);
+      else if (sInput.value.trim().length >= 2) {
+        var q = sInput.value.trim();
+        sStatus("‘" + q + "’ 종목을 찾는 중…");
+        searchStocks(q).then(function (items) {
+          if (items.length) sPick(items[0]);
+          else sStatus("‘" + q + "’ 종목을 찾지 못했어요", true);
+        })["catch"](function () { sStatus("검색이 잠시 안 돼요 — 잠시 후 다시 시도해 주세요", true); });
+      }
+    } else if (e.key === "Escape") sHide();
+  });
+  sInput.addEventListener("blur", function () { setTimeout(sHide, 150); });
+
+  // ── 최근 본 종목 (저장 가능한 환경에서만) ──
+  function renderRecent() {
+    var box = el("st-recent");
+    box.innerHTML = "";
+    var rec = lsGet("ad_recent_stocks") || [];
+    rec.slice(0, 5).forEach(function (it) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip";
+      b.textContent = it.name;
+      b.title = it.symbol;
+      b.addEventListener("click", function () { sPick(it); });
+      box.appendChild(b);
+    });
+  }
+  function saveRecent(it) {
+    var rec = (lsGet("ad_recent_stocks") || []).filter(function (r) { return r.symbol !== it.symbol; });
+    rec.unshift({ symbol: it.symbol, name: it.name, exch: it.exch, type: it.type, query: it.query });
+    lsSet("ad_recent_stocks", rec.slice(0, 5));
+    renderRecent();
+  }
+
+  // ── 종목 선택 → 단계 리셋 ──
+  function sPick(it) {
+    sstate.pick = {
+      symbol: it.symbol, name: it.name, exch: it.exch, type: it.type,
+      query: it.query || sInput.value.trim() || it.name
+    };
+    sstate.chart = null;
+    sHide(); sInput.value = ""; sInput.blur();
+    el("st-picked").innerHTML = "📈 " + esc(it.name) +
+      ' <span class="q-sym">' + esc(it.symbol) + (it.exch ? " · " + esc(it.exch) : "") + "</span>";
+    sStatus("종목이 설정됐어요 — 1단계 시작을 누르세요");
+    el("st-stamp").textContent = "아직 실행 전";
+    sflow.setNode(1, "ready"); sflow.setNode(2, "locked"); sflow.setNode(3, "locked");
+    saveRecent(sstate.pick);
+  }
+
+  // ── 차트 데이터 로드/정리 ──
+  function loadChart() {
+    var url = Y_CHART + encodeURIComponent(sstate.pick.symbol) + "?range=1y&interval=1d&includePrePost=false";
+    return viaProxy(url, false).then(function (d) {
+      var r = d && d.chart && d.chart.result && d.chart.result[0];
+      if (!r || !r.meta) throw new Error("bad payload");
+      var quote = (r.indicators && r.indicators.quote && r.indicators.quote[0]) || {};
+      var closes = [], highs = [], lows = [], vols = [];
+      var rawC = quote.close || [], rawH = quote.high || [], rawL = quote.low || [], rawV = quote.volume || [];
+      for (var i = 0; i < rawC.length; i++) {
+        if (num(rawC[i]) === null) continue;
+        closes.push(rawC[i]);
+        highs.push(num(rawH[i]) === null ? rawC[i] : rawH[i]);
+        lows.push(num(rawL[i]) === null ? rawC[i] : rawL[i]);
+        vols.push(num(rawV[i]));
+      }
+      sstate.chart = { meta: r.meta, closes: closes, highs: highs, lows: lows, vols: vols };
+      return sstate.chart;
+    });
+  }
+
+  function sparkSVG(closes) {
+    var n = closes.length;
+    if (n < 2) return "";
+    var w = 300, h = 64, pad = 4;
+    var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+    var span = Math.max(max - min, 1e-9);
+    var pts = closes.map(function (c, i) {
+      var x = pad + (w - pad * 2) * i / (n - 1);
+      var y = pad + (h - pad * 2) * (1 - (c - min) / span);
+      return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+    });
+    var line = pts.map(function (p) { return p[0] + "," + p[1]; }).join(" ");
+    var area = "M" + pts[0][0] + "," + (h - pad) + " L" + pts.map(function (p) { return p[0] + "," + p[1]; }).join(" L") +
+      " L" + pts[n - 1][0] + "," + (h - pad) + " Z";
+    var last = pts[n - 1];
+    return '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="' + area + '" fill="currentColor" opacity="0.08"></path>' +
+      '<polyline points="' + line + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>' +
+      '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3" fill="currentColor"></circle></svg>';
+  }
+
+  // ── 1단계: 기본 주가 ──
+  function runS1() {
+    if (sflow.isLocked(1) || sflow.busy(1)) return;
+    sflow.setLoading(1, true);
+    sStatus(sstate.pick.name + " 시세를 불러오는 중…");
+    loadChart()
+      .then(function () {
+        renderS1();
+        sflow.setNode(1, "done");
+        if (!sflow.isDone(2)) sflow.setNode(2, "ready");
+        stampNow("st-stamp");
+        sStatus("✓ 1단계 완료 — 2단계 시작을 눌러보세요");
+      })["catch"](function (err) {
+        sStatus(err && err.name === "AbortError" ? "응답이 없어요 — 잠시 후 다시 시도해 주세요"
+          : "시세를 불러오지 못했어요 — 다시 실행을 눌러보세요", true);
+      })
+      .then(function () { sflow.setLoading(1, false); });
+  }
+  function renderS1() {
+    var c = sstate.chart, m = c.meta;
+    var cur = m.currency || "";
+    var price = num(m.regularMarketPrice);
+    if (price === null && c.closes.length) price = c.closes[c.closes.length - 1];
+    var prev = num(m.chartPreviousClose);
+    if (prev === null) prev = num(m.previousClose);
+    if (prev === null && c.closes.length > 1) prev = c.closes[c.closes.length - 2];
+    var chg = (price !== null && prev !== null) ? price - prev : null;
+    var chgPct = (chg !== null && prev) ? chg / prev * 100 : null;
+    var dispName = (m.shortName && hasHangul(m.shortName)) ? m.shortName : sstate.pick.name;
+    if (m.shortName && hasHangul(m.shortName) && !hasHangul(sstate.pick.name)) {
+      sstate.pick.name = m.shortName;
+      el("st-picked").innerHTML = "📈 " + esc(dispName) +
+        ' <span class="q-sym">' + esc(sstate.pick.symbol) + (sstate.pick.exch ? " · " + esc(sstate.pick.exch) : "") + "</span>";
+    }
+    var hi52 = num(m.fiftyTwoWeekHigh); if (hi52 === null && c.highs.length) hi52 = Math.max.apply(null, c.highs);
+    var lo52 = num(m.fiftyTwoWeekLow); if (lo52 === null && c.lows.length) lo52 = Math.min.apply(null, c.lows);
+    var dayHi = num(m.regularMarketDayHigh); if (dayHi === null && c.highs.length) dayHi = c.highs[c.highs.length - 1];
+    var dayLo = num(m.regularMarketDayLow); if (dayLo === null && c.lows.length) dayLo = c.lows[c.lows.length - 1];
+    var vol = num(m.regularMarketVolume);
+    if (vol === null) { for (var i = c.vols.length - 1; i >= 0; i--) { if (c.vols[i] !== null) { vol = c.vols[i]; break; } } }
+
+    var spark3m = c.closes.slice(-63);
+    var ret3m = spark3m.length > 1 ? (spark3m[spark3m.length - 1] - spark3m[0]) / spark3m[0] * 100 : null;
+
+    el("st-quote").innerHTML =
+      '<div class="q-name">' + esc(dispName) +
+        '<span class="q-sym">' + esc(sstate.pick.symbol) + (m.fullExchangeName || m.exchangeName ? " · " + esc(m.fullExchangeName || m.exchangeName) : "") + "</span></div>" +
+      '<div class="price-row"><span class="q-price">' + fmtPrice(price, cur) + "</span>" +
+        '<span class="chg ' + udClass(chg) + '">' +
+          (chg === null ? "" : (chg > 0 ? "▲ " : chg < 0 ? "▼ " : "– ") + fmtDelta(chg, cur) + " (" + fmtPct(chgPct, 2) + ")") +
+        "</span></div>" +
+      '<div class="spark-cap"><span>최근 3개월 추이</span><span class="' + udClass(ret3m) + '">' + fmtPct(ret3m) + "</span></div>" +
+      '<div class="spark ' + (ret3m !== null && ret3m < 0 ? "neg" : "pos") + '">' + sparkSVG(spark3m) + "</div>" +
+      '<div class="tiles">' +
+        '<div class="tile"><div class="label">당일 고가</div><div class="value">' + fmtPrice(dayHi, cur) + "</div></div>" +
+        '<div class="tile"><div class="label">당일 저가</div><div class="value">' + fmtPrice(dayLo, cur) + "</div></div>" +
+        '<div class="tile"><div class="label">전일 종가</div><div class="value">' + fmtPrice(prev, cur) + "</div></div>" +
+        '<div class="tile"><div class="label">52주 최고</div><div class="value">' + fmtPrice(hi52, cur) + "</div></div>" +
+        '<div class="tile"><div class="label">52주 최저</div><div class="value">' + fmtPrice(lo52, cur) + "</div></div>" +
+        '<div class="tile"><div class="label">거래량</div><div class="value">' + fmtCompact(vol) + "</div></div>" +
+      "</div>";
+  }
+
+  // ── 2단계: 관련 뉴스 ──
+  function runS2() {
+    if (sflow.isLocked(2) || sflow.busy(2)) return;
+    sflow.setLoading(2, true);
+    sStatus("관련 뉴스를 불러오는 중…");
+    var q = hasHangul(sstate.pick.query) ? sstate.pick.query
+      : (hasHangul(sstate.pick.name) ? sstate.pick.name : sstate.pick.name);
+    var url = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=ko&gl=KR&ceid=KR:ko";
+    viaProxy(url, true)
+      .then(function (xml) {
+        var doc = new DOMParser().parseFromString(xml, "text/xml");
+        var items = Array.prototype.slice.call(doc.querySelectorAll("item")).slice(0, 6).map(function (it) {
+          function tx(tag) { var e2 = it.querySelector(tag); return e2 ? e2.textContent : ""; }
+          var title = tx("title"), source = tx("source");
+          if (source && title.lastIndexOf(" - " + source) === title.length - (" - " + source).length && title.length > (" - " + source).length)
+            title = title.slice(0, title.length - (" - " + source).length);
+          return { title: title, link: tx("link"), date: tx("pubDate"), source: source };
+        }).filter(function (x) { return x.title && x.link; });
+        if (!items.length) throw new Error("no news");
+        el("st-news").innerHTML = items.map(function (x) {
+          return '<a class="news-item" href="' + esc(x.link) + '" target="_blank" rel="noopener">' +
+            '<div class="news-title">' + esc(x.title) + "</div>" +
+            '<div class="news-sub">' + esc(x.source || "뉴스") + (x.date ? " · " + relTime(x.date) : "") + "</div></a>";
+        }).join("");
+        sflow.setNode(2, "done");
+        if (!sflow.isDone(3)) sflow.setNode(3, "ready");
+        stampNow("st-stamp");
+        sStatus("✓ 2단계 완료 — 3단계 시작을 눌러보세요");
+      })["catch"](function (err) {
+        sStatus(err && err.message === "no news" ? "관련 뉴스를 찾지 못했어요"
+          : "뉴스를 불러오지 못했어요 — 다시 실행을 눌러보세요", true);
+      })
+      .then(function () { sflow.setLoading(2, false); });
+  }
+
+  // ── 3단계: 투자 지표 분석 ──
+  function sma(a, n) {
+    if (a.length < n) return null;
+    var s = 0;
+    for (var i = a.length - n; i < a.length; i++) s += a[i];
+    return s / n;
+  }
+  function rsi14(a) {
+    var p = 14;
+    if (a.length < p + 1) return null;
+    var g = 0, l = 0, i, d;
+    for (i = 1; i <= p; i++) { d = a[i] - a[i - 1]; if (d > 0) g += d; else l -= d; }
+    g /= p; l /= p;
+    for (i = p + 1; i < a.length; i++) {
+      d = a[i] - a[i - 1];
+      g = (g * (p - 1) + (d > 0 ? d : 0)) / p;
+      l = (l * (p - 1) + (d < 0 ? -d : 0)) / p;
+    }
+    if (l === 0) return 100;
+    return 100 - 100 / (1 + g / l);
+  }
+  function retOver(a, days) {
+    if (a.length < days + 1) return null;
+    var past = a[a.length - 1 - days], now = a[a.length - 1];
+    return past ? (now - past) / past * 100 : null;
+  }
+
+  function runS3() {
+    if (sflow.isLocked(3) || sflow.busy(3)) return;
+    sflow.setLoading(3, true);
+    sStatus("지표를 계산하는 중…");
+    var p = sstate.chart ? Promise.resolve(sstate.chart) : loadChart();
+    p.then(function () {
+        renderS3();
+        sflow.setNode(3, "done");
+        stampNow("st-stamp");
+        sStatus("✓ 3단계 완료 — 모든 단계가 끝났어요");
+      })["catch"](function () { sStatus("지표 계산에 필요한 시세를 불러오지 못했어요", true); })
+      .then(function () { sflow.setLoading(3, false); });
+  }
+  function renderS3() {
+    var c = sstate.chart, m = c.meta;
+    var cur = m.currency || "";
+    var a = c.closes;
+    var price = num(m.regularMarketPrice);
+    if (price === null && a.length) price = a[a.length - 1];
+    var r1w = retOver(a, 5), r1m = retOver(a, 21), r3m = retOver(a, 63);
+    var r1y = a.length > 1 ? (a[a.length - 1] - a[0]) / a[0] * 100 : null;
+    var ma20 = sma(a, 20), ma60 = sma(a, 60);
+    var vs20 = (ma20 && price !== null) ? (price - ma20) / ma20 * 100 : null;
+    var vs60 = (ma60 && price !== null) ? (price - ma60) / ma60 * 100 : null;
+    var rsi = rsi14(a);
+    var hi52 = num(m.fiftyTwoWeekHigh); if (hi52 === null && c.highs.length) hi52 = Math.max.apply(null, c.highs);
+    var lo52 = num(m.fiftyTwoWeekLow); if (lo52 === null && c.lows.length) lo52 = Math.min.apply(null, c.lows);
+    var pos = (hi52 !== null && lo52 !== null && hi52 > lo52 && price !== null)
+      ? Math.min(100, Math.max(0, (price - lo52) / (hi52 - lo52) * 100)) : null;
+
+    var notes = [];
+    if (rsi !== null) {
+      if (rsi >= 70) notes.push("RSI " + Math.round(rsi) + " — 단기 과열 구간, 눌림 가능성에 유의");
+      else if (rsi <= 30) notes.push("RSI " + Math.round(rsi) + " — 단기 과매도 구간, 반등 여지");
+      else notes.push("RSI " + Math.round(rsi) + " — 중립 구간");
+    }
+    if (vs20 !== null && vs60 !== null) {
+      if (vs20 > 0 && vs60 > 0) notes.push("20·60일 이동평균선 상회 — 추세 흐름 양호");
+      else if (vs20 < 0 && vs60 < 0) notes.push("20·60일 이동평균선 하회 — 추세 약세");
+      else notes.push("이동평균선 혼조 — 방향성 탐색 구간");
+    }
+    if (pos !== null) {
+      if (pos >= 80) notes.push("52주 밴드 상단(" + Math.round(pos) + "%) — 고점 부담 체크");
+      else if (pos <= 20) notes.push("52주 밴드 하단(" + Math.round(pos) + "%) — 저점권");
+    }
+
+    var mKr = /^(\d{6})\.(KS|KQ)$/.exec(sstate.pick.symbol);
+    var links = "";
+    if (mKr) links += '<a class="link-btn" target="_blank" rel="noopener" href="https://finance.naver.com/item/coinfo.naver?code=' + mKr[1] + '">네이버 증권 종목분석(컨센서스) ↗</a>';
+    links += '<a class="link-btn" target="_blank" rel="noopener" href="https://finance.yahoo.com/quote/' + encodeURIComponent(sstate.pick.symbol) + '/analysis">Yahoo 애널리스트 분석 ↗</a>';
+
+    function retTile(label, v) {
+      return '<div class="tile"><div class="label">' + label + '</div><div class="value ' + udClass(v) + '">' + fmtPct(v) + "</div></div>";
+    }
+    el("st-ind").innerHTML =
+      '<div class="ind-grid">' + retTile("1주", r1w) + retTile("1개월", r1m) + retTile("3개월", r3m) + retTile("1년", r1y) + "</div>" +
+      '<div class="ind-row"><span class="k">RSI (14일)</span><span class="v">' + (rsi === null ? "—" : Math.round(rsi) + (rsi >= 70 ? " · 과매수" : rsi <= 30 ? " · 과매도" : " · 중립")) + "</span></div>" +
+      '<div class="ind-row"><span class="k">20일 이동평균 대비</span><span class="v ' + udClass(vs20) + '">' + fmtPct(vs20) + "</span></div>" +
+      '<div class="ind-row"><span class="k">60일 이동평균 대비</span><span class="v ' + udClass(vs60) + '">' + fmtPct(vs60) + "</span></div>" +
+      (pos === null ? "" :
+        '<div class="meter"><div class="mfill" style="width:' + pos.toFixed(1) + '%"></div><div class="mdot" style="left:' + pos.toFixed(1) + '%"></div></div>' +
+        '<div class="meter-lab"><span>52주 최저 ' + fmtPrice(lo52, cur) + "</span><span>현재 위치 " + Math.round(pos) + "%</span><span>52주 최고 " + fmtPrice(hi52, cur) + "</span></div>") +
+      (notes.length ? '<div class="sum-box">' + notes.map(function (t) { return "· " + esc(t); }).join("<br>") + "</div>" : "") +
+      '<div class="link-row">' + links + "</div>" +
+      '<div class="disclaim">※ 증권사 목표주가 컨센서스는 무료 공개 API가 없어 위 링크에서 확인하세요. 지표는 종가 기준 자동 계산이며 투자 권유가 아닙니다.</div>';
+  }
+
+  el("ststart1").addEventListener("click", runS1);
+  el("ststart2").addEventListener("click", runS2);
+  el("ststart3").addEventListener("click", runS3);
+  el("strerun1").addEventListener("click", runS1);
+  el("strerun2").addEventListener("click", runS2);
+  el("strerun3").addEventListener("click", runS3);
+  sflow.bindHead(1, runS1);
+  sflow.bindHead(2, runS2);
+  sflow.bindHead(3, runS3);
+  sflow.setNode(1, "locked");
+  sflow.setNode(2, "locked");
+  sflow.setNode(3, "locked");
+  renderRecent();
 })();
 </script>
 </body>
