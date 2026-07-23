@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="8">
+<meta name="app-version" content="9">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -324,9 +324,15 @@
   .gl-head { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
   .gl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease infinite; flex-shrink: 0; }
   @keyframes pulse { 50% { opacity: 0.25; } }
+  .gl-sec-label { font-size: 11px; font-weight: 700; color: var(--accent); margin: 8px 0 4px; }
+  .gl-think {
+    max-height: 220px; overflow-y: auto; margin: 0;
+    font-family: inherit; font-size: 12.5px; line-height: 1.65;
+    color: var(--ink-2); white-space: pre-wrap; word-break: break-word;
+  }
   .gl-text {
-    max-height: 180px; overflow-y: auto; margin: 0;
-    font-family: inherit; font-size: 11.5px; line-height: 1.6;
+    max-height: 120px; overflow-y: auto; margin: 0;
+    font-family: inherit; font-size: 11px; line-height: 1.6;
     color: var(--muted); white-space: pre-wrap; word-break: break-all;
   }
   .manual-box { border: 1px dashed var(--hairline); border-radius: 12px; padding: 12px; margin-top: 10px; }
@@ -386,7 +392,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v8</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v9</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -617,7 +623,10 @@
           </button>
           <div class="gen-live" id="shlive1" hidden>
             <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta1">실시간 생성 중…</span></div>
-            <pre class="gl-text" id="shlivetext1"></pre>
+            <div class="gl-sec-label" id="shthinklab1" hidden>💭 AI의 생각</div>
+            <pre class="gl-think" id="shlivethink1" hidden></pre>
+            <div class="gl-sec-label" id="shoutlab1" hidden>✍️ 결과 작성</div>
+            <pre class="gl-text" id="shlivetext1" hidden></pre>
           </div>
           <div class="manual-box" id="shmanual1" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
@@ -647,7 +656,10 @@
           </button>
           <div class="gen-live" id="shlive2" hidden>
             <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta2">실시간 생성 중…</span></div>
-            <pre class="gl-text" id="shlivetext2"></pre>
+            <div class="gl-sec-label" id="shthinklab2" hidden>💭 AI의 생각</div>
+            <pre class="gl-think" id="shlivethink2" hidden></pre>
+            <div class="gl-sec-label" id="shoutlab2" hidden>✍️ 결과 작성</div>
+            <pre class="gl-text" id="shlivetext2" hidden></pre>
           </div>
           <div class="manual-box" id="shmanual2" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
@@ -677,7 +689,10 @@
           </button>
           <div class="gen-live" id="shlive3" hidden>
             <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta3">실시간 생성 중…</span></div>
-            <pre class="gl-text" id="shlivetext3"></pre>
+            <div class="gl-sec-label" id="shthinklab3" hidden>💭 AI의 생각</div>
+            <pre class="gl-think" id="shlivethink3" hidden></pre>
+            <div class="gl-sec-label" id="shoutlab3" hidden>✍️ 결과 작성</div>
+            <pre class="gl-text" id="shlivetext3" hidden></pre>
           </div>
           <div class="manual-box" id="shmanual3" hidden>
             <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
@@ -1917,28 +1932,41 @@
       throw e;
     });
   }
-  function claudeStreamText(sys, user, maxTokens, onDelta) {
+  var THINK_BUDGET = 3000; // AI '생각' 분량 (tokens)
+  function claudeStreamText(sys, user, maxTokens, onEvent, noThink) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 180000);
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 240000);
+    var req = { model: curModel(), max_tokens: maxTokens, stream: true, system: sys, messages: [{ role: "user", content: user }] };
+    if (!noThink) {
+      req.thinking = { type: "enabled", budget_tokens: THINK_BUDGET };
+      req.max_tokens = maxTokens + THINK_BUDGET + 200;
+    }
     var opt = {
       method: "POST",
       headers: {
         "content-type": "application/json", "x-api-key": getKey(),
         "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"
       },
-      body: JSON.stringify({ model: curModel(), max_tokens: maxTokens, stream: true, system: sys, messages: [{ role: "user", content: user }] })
+      body: JSON.stringify(req)
     };
     if (ctrl) opt.signal = ctrl.signal;
     return fetch(ANTHROPIC_BASE + "/v1/messages", opt)
       .then(function (res) {
-        if (!res.ok) return streamFail(res);
+        if (!res.ok) {
+          if (!noThink && res.status === 400) {
+            if (timer) clearTimeout(timer);
+            return claudeStreamText(sys, user, maxTokens, onEvent, true); // 모델이 thinking 미지원 → 생각 없이 재시도
+          }
+          return streamFail(res);
+        }
         if (!res.body || !res.body.getReader) throw new Error("NO_STREAM");
         var out = "";
         return readSSE(res, function (payload) {
           var j;
           try { j = JSON.parse(payload); } catch (e) { return; }
-          if (j.type === "content_block_delta" && j.delta && typeof j.delta.text === "string") {
-            out += j.delta.text; onDelta(j.delta.text);
+          if (j.type === "content_block_delta" && j.delta) {
+            if (typeof j.delta.thinking === "string" && j.delta.thinking) onEvent("think", j.delta.thinking);
+            if (typeof j.delta.text === "string" && j.delta.text) { out += j.delta.text; onEvent("text", j.delta.text); }
           }
           if (j.type === "error") { var e2 = new Error((j.error && j.error.message) || "stream error"); throw e2; }
         }).then(function () { return out; });
@@ -1946,22 +1974,30 @@
       .then(function (d) { if (timer) clearTimeout(timer); return d; },
             function (e) { if (timer) clearTimeout(timer); throw e; });
   }
-  function geminiStreamText(sys, user, maxTokens, onDelta) {
+  function geminiStreamText(sys, user, maxTokens, onEvent, noThink) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 180000);
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 240000);
+    var gc = { maxOutputTokens: maxTokens, responseMimeType: "application/json" };
+    if (!noThink) gc.thinkingConfig = { includeThoughts: true };
     var opt = {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": getKey() },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: sys }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
-        generationConfig: { maxOutputTokens: maxTokens, responseMimeType: "application/json" }
+        generationConfig: gc
       })
     };
     if (ctrl) opt.signal = ctrl.signal;
     return fetch(GEMINI_BASE + "/v1beta/models/" + encodeURIComponent(curModel()) + ":streamGenerateContent?alt=sse", opt)
       .then(function (res) {
-        if (!res.ok) return streamFail(res);
+        if (!res.ok) {
+          if (!noThink && res.status === 400) {
+            if (timer) clearTimeout(timer);
+            return geminiStreamText(sys, user, maxTokens, onEvent, true); // thinkingConfig 미지원 → 없이 재시도
+          }
+          return streamFail(res);
+        }
         if (!res.body || !res.body.getReader) throw new Error("NO_STREAM");
         var out = "";
         return readSSE(res, function (payload) {
@@ -1970,19 +2006,21 @@
           if (j.error) { var e2 = new Error(j.error.message || "stream error"); e2.status = j.error.code; throw e2; }
           var cand = (j.candidates && j.candidates[0]) || {};
           ((cand.content && cand.content.parts) || []).forEach(function (p) {
-            if (typeof p.text === "string" && p.text) { out += p.text; onDelta(p.text); }
+            if (typeof p.text !== "string" || !p.text) return;
+            if (p.thought === true) onEvent("think", p.text);           // 생각 요약은 결과 JSON에서 제외
+            else { out += p.text; onEvent("text", p.text); }
           });
         }).then(function () { return out; });
       })
       .then(function (d) { if (timer) clearTimeout(timer); return d; },
             function (e) { if (timer) clearTimeout(timer); throw e; });
   }
-  function genStreamText(sys, user, maxTokens, onDelta) {
+  function genStreamText(sys, user, maxTokens, onEvent) {
     var got = 0;
-    var count = function (t) { got += t.length; onDelta(t); };
+    var wrap = function (kind, t) { got += t.length; onEvent(kind, t); };
     var p = getProvider() === "claude"
-      ? claudeStreamText(sys, user, maxTokens, count)
-      : geminiStreamText(sys, user, maxTokens, count);
+      ? claudeStreamText(sys, user, maxTokens, wrap)
+      : geminiStreamText(sys, user, maxTokens, wrap);
     return p["catch"](function (e) {
       if (e && (e.status === 401 || e.status === 403 || e.status === 429)) throw e; // 키·한도 문제는 그대로 보고
       if (got > 0) throw e;                       // 수신 중 끊김 → 오류 표시
@@ -1990,21 +2028,30 @@
     });
   }
 
-  // ── 실시간 표시 패널 ──
+  // ── 실시간 표시 패널 (생각 + 결과) ──
   var liveTimers = {};
   function startLive(n) {
-    var txt = el("shlivetext" + n), meta = el("shlivemeta" + n);
-    txt.textContent = "";
+    ["shlivethink", "shlivetext"].forEach(function (p2) {
+      var x = el(p2 + n); x.textContent = ""; x.hidden = true;
+    });
+    el("shthinklab" + n).hidden = true;
+    el("shoutlab" + n).hidden = true;
     el("shlive" + n).hidden = false;
     var t0 = Date.now();
-    meta.textContent = "실시간 생성 중 · 0초 · 0자 수신";
+    var meta = el("shlivemeta" + n);
+    meta.textContent = "실시간 생성 중 · 0초";
     liveTimers[n] = setInterval(function () {
+      var chars = el("shlivethink" + n).textContent.length + el("shlivetext" + n).textContent.length;
       meta.textContent = "실시간 생성 중 · " + Math.round((Date.now() - t0) / 1000) + "초 · " +
-        txt.textContent.length.toLocaleString("ko-KR") + "자 수신";
+        chars.toLocaleString("ko-KR") + "자 수신";
     }, 500);
   }
-  function liveDelta(n, t) {
-    var txt = el("shlivetext" + n);
+  function liveDelta(n, kind, t) {
+    var isThink = kind === "think";
+    var lab = el(isThink ? "shthinklab" + n : "shoutlab" + n);
+    var txt = el(isThink ? "shlivethink" + n : "shlivetext" + n);
+    if (lab.hidden) lab.hidden = false;
+    if (txt.hidden) txt.hidden = false;
     txt.textContent += t;
     txt.scrollTop = txt.scrollHeight;
   }
@@ -2123,7 +2170,7 @@
     shflow.setLoading(n, true);
     shStatus(loadingMsg);
     startLive(n);
-    genStreamText(COMMON_SYS, user, maxTok, function (t) { liveDelta(n, t); })
+    genStreamText(COMMON_SYS, user, maxTok, function (kind, t) { liveDelta(n, kind, t); })
       .then(function (text) { handleResult(n, parseClaudeJson(text)); })
       ["catch"](function (e) { shStatus(aiErrMsg(e), true); })
       .then(function () { stopLive(n); shflow.setLoading(n, false); });
