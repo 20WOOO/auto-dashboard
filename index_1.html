@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>자동화 대시보드</title>
+<meta name="description" content="시작 버튼을 누르면 오늘의 서울 날씨를 불러오는 자동화 대시보드">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+<style>
+  :root {
+    color-scheme: light;
+    --plane: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --hairline: #e1e0d9;
+    --border: rgba(11, 11, 11, 0.10);
+    --accent: #2a78d6;
+    --accent-press: #256abf;
+    --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --plane: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --hairline: #2c2c2a;
+      --border: rgba(255, 255, 255, 0.10);
+      --accent: #3987e5;
+      --accent-press: #2a78d6;
+      --critical: #e66767;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: var(--plane);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  header.page { margin: 8px 4px 20px; }
+  header.page h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  header.page p { margin-top: 4px; font-size: 13px; color: var(--muted); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .card-head h2 { font-size: 16px; font-weight: 700; }
+  .card-head .stamp { font-size: 12px; color: var(--muted); text-align: right; }
+
+  .run-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 52px;
+    border: none; border-radius: 12px;
+    background: var(--accent); color: #ffffff;
+    font-family: inherit; font-size: 16px; font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  .run-btn:hover { filter: brightness(1.06); }
+  .run-btn:active { background: var(--accent-press); }
+  .run-btn:disabled { opacity: 0.55; cursor: default; }
+  .run-btn .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: #ffffff;
+    animation: spin 0.8s linear infinite; display: none;
+  }
+  .run-btn.loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status { min-height: 20px; margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
+  .status.error { color: var(--critical); font-weight: 600; }
+
+  .weather-body { margin-top: 8px; }
+  .date-line { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+  .hero {
+    display: flex; align-items: center; gap: 14px;
+    padding: 6px 0 18px;
+  }
+  .hero .icon { font-size: 44px; line-height: 1; }
+  .hero .temp { font-size: 56px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+  .hero .cond { font-size: 15px; color: var(--ink-2); font-weight: 500; margin-top: 6px; }
+
+  .tiles {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  @media (max-width: 420px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .tile .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .tile .value { font-size: 18px; font-weight: 600; }
+  .tile .value .unit { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 1px; }
+
+  .card-foot {
+    margin-top: 16px; padding-top: 12px;
+    border-top: 1px solid var(--hairline);
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 11.5px; color: var(--muted);
+  }
+  .card-foot a { color: var(--muted); }
+
+  .ghost-card {
+    border: 1px dashed var(--hairline);
+    background: none;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>⚡ 자동화 대시보드</h1>
+    <p>버튼을 누르면 등록된 자동화가 실행됩니다</p>
+  </header>
+
+  <section class="card" id="weather-card">
+    <div class="card-head">
+      <h2>🌤️ 서울 날씨</h2>
+      <div class="stamp" id="stamp">아직 실행 전</div>
+    </div>
+
+    <button class="run-btn" id="run-btn" type="button">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="run-label">▶ 시작</span>
+    </button>
+    <div class="status" id="status">시작을 누르면 오늘의 서울 날씨를 불러옵니다</div>
+
+    <div class="weather-body">
+      <div class="date-line" id="date-line">&nbsp;</div>
+      <div class="hero">
+        <div class="icon" id="w-icon">—</div>
+        <div>
+          <span class="temp" id="w-temp">—</span>
+          <div class="cond" id="w-cond">대기 중</div>
+        </div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="label">체감온도</div><div class="value" id="w-feel">—</div></div>
+        <div class="tile"><div class="label">습도</div><div class="value" id="w-humid">—</div></div>
+        <div class="tile"><div class="label">바람</div><div class="value" id="w-wind">—</div></div>
+        <div class="tile"><div class="label">오늘 최고</div><div class="value" id="w-max">—</div></div>
+        <div class="tile"><div class="label">오늘 최저</div><div class="value" id="w-min">—</div></div>
+        <div class="tile"><div class="label">강수확률</div><div class="value" id="w-pop">—</div></div>
+      </div>
+    </div>
+
+    <div class="card-foot">
+      <span>위치: 서울 (37.57, 126.98)</span>
+      <span>데이터: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></span>
+    </div>
+  </section>
+
+  <section class="ghost-card">
+    ＋ 다음 자동화가 들어갈 자리<br>
+    Claude에게 요청해 새 카드를 추가할 수 있습니다
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API_URL =
+    "https://api.open-meteo.com/v1/forecast" +
+    "?latitude=37.5665&longitude=126.978" +
+    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code" +
+    "&timezone=Asia%2FSeoul&forecast_days=1";
+
+  // WMO weather code → 한국어 설명 + 아이콘
+  var WMO = {
+    0:  ["맑음", "☀️", "🌙"],
+    1:  ["대체로 맑음", "🌤️", "🌙"],
+    2:  ["구름 조금", "⛅", "☁️"],
+    3:  ["흐림", "☁️", "☁️"],
+    45: ["안개", "🌫️", "🌫️"], 48: ["안개(착빙)", "🌫️", "🌫️"],
+    51: ["약한 이슬비", "🌦️", "🌧️"], 53: ["이슬비", "🌦️", "🌧️"], 55: ["강한 이슬비", "🌧️", "🌧️"],
+    56: ["어는 이슬비", "🌧️", "🌧️"], 57: ["강한 어는 이슬비", "🌧️", "🌧️"],
+    61: ["약한 비", "🌦️", "🌧️"], 63: ["비", "🌧️", "🌧️"], 65: ["강한 비", "🌧️", "🌧️"],
+    66: ["어는 비", "🌧️", "🌧️"], 67: ["강한 어는 비", "🌧️", "🌧️"],
+    71: ["약한 눈", "🌨️", "🌨️"], 73: ["눈", "🌨️", "🌨️"], 75: ["강한 눈", "❄️", "❄️"],
+    77: ["싸락눈", "🌨️", "🌨️"],
+    80: ["약한 소나기", "🌦️", "🌧️"], 81: ["소나기", "🌧️", "🌧️"], 82: ["강한 소나기", "⛈️", "⛈️"],
+    85: ["약한 소낙눈", "🌨️", "🌨️"], 86: ["강한 소낙눈", "❄️", "❄️"],
+    95: ["뇌우", "⛈️", "⛈️"], 96: ["뇌우(우박)", "⛈️", "⛈️"], 99: ["강한 뇌우(우박)", "⛈️", "⛈️"]
+  };
+
+  var btn = document.getElementById("run-btn");
+  var runLabel = document.getElementById("run-label");
+  var statusEl = document.getElementById("status");
+  var stamp = document.getElementById("stamp");
+  var hasRun = false;
+
+  function el(id) { return document.getElementById(id); }
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+  function put(id, html) { el(id).innerHTML = html; }
+  function deg(v) { return v === null ? "—" : Math.round(v) + '<span class="unit">°</span>'; }
+
+  function kstNow(opts) {
+    try { return new Date().toLocaleString("ko-KR", Object.assign({ timeZone: "Asia/Seoul" }, opts)); }
+    catch (e) { return new Date().toLocaleString("ko-KR", opts); }
+  }
+
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.classList.toggle("loading", on);
+    runLabel.textContent = on ? "불러오는 중…" : (hasRun ? "🔄 다시 불러오기" : "▶ 시작");
+  }
+
+  function render(data) {
+    var cur = (data && data.current) || {};
+    var daily = (data && data.daily) || {};
+
+    var t = num(cur.temperature_2m);
+    var feel = num(cur.apparent_temperature);
+    var humid = num(cur.relative_humidity_2m);
+    var wind = num(cur.wind_speed_10m);
+    var code = num(cur.weather_code);
+    var isDay = cur.is_day !== 0; // 값이 없으면 낮으로 간주
+    var tmax = num(daily.temperature_2m_max && daily.temperature_2m_max[0]);
+    var tmin = num(daily.temperature_2m_min && daily.temperature_2m_min[0]);
+    var pop = num(daily.precipitation_probability_max && daily.precipitation_probability_max[0]);
+
+    var w = (code !== null && WMO[code]) || ["정보 없음", "🌡️", "🌡️"];
+
+    put("date-line", kstNow({ month: "long", day: "numeric", weekday: "long" }) + " · 서울");
+    put("w-icon", isDay ? w[1] : w[2]);
+    put("w-temp", t === null ? "—" : Math.round(t * 10) / 10 + "°");
+    put("w-cond", w[0] + (feel !== null ? " · 체감 " + Math.round(feel) + "°" : ""));
+    put("w-feel", deg(feel));
+    put("w-humid", humid === null ? "—" : humid + '<span class="unit">%</span>');
+    put("w-wind", wind === null ? "—" : Math.round(wind) + '<span class="unit">km/h</span>');
+    put("w-max", deg(tmax));
+    put("w-min", deg(tmin));
+    put("w-pop", pop === null ? "—" : pop + '<span class="unit">%</span>');
+
+    stamp.textContent = "마지막 업데이트 " + kstNow({ hour: "numeric", minute: "2-digit" });
+    statusEl.className = "status";
+    statusEl.textContent = "✓ 업데이트 완료";
+    hasRun = true;
+  }
+
+  function fail(msg) {
+    statusEl.className = "status error";
+    statusEl.textContent = msg;
+  }
+
+  function run() {
+    setLoading(true);
+    statusEl.className = "status";
+    statusEl.textContent = "서울 날씨를 불러오는 중…";
+
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 12000);
+
+    fetch(API_URL, ctrl ? { signal: ctrl.signal } : {})
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data || !data.current) throw new Error("bad payload");
+        render(data);
+      })
+      .catch(function (err) {
+        fail(err && err.name === "AbortError"
+          ? "응답이 없습니다. 잠시 후 다시 시도해 주세요."
+          : "날씨를 불러오지 못했습니다. 네트워크 확인 후 다시 시도해 주세요.");
+      })
+      .then(function () {
+        if (timer) clearTimeout(timer);
+        setLoading(false);
+      });
+  }
+
+  btn.addEventListener("click", run);
+})();
+</script>
+</body>
+</html>
