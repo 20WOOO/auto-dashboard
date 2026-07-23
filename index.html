@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="10">
+<meta name="app-version" content="11">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -363,6 +363,28 @@
     color: var(--ink-2); font-family: inherit; font-size: 11px; padding: 4px 10px; cursor: pointer; flex-shrink: 0;
   }
   .copy-mini:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-mini:disabled { opacity: 0.6; cursor: default; }
+
+  /* 씬 이미지 생성 */
+  .img-opts { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .img-opts .copy-mini { align-self: flex-start; margin-top: 8px; }
+  .imgprog { margin: 10px 0 2px; }
+  .imgbar { height: 7px; border-radius: 4px; background: var(--tile); overflow: hidden; }
+  .imgfill { height: 7px; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--accent-soft), var(--accent)); transition: width 0.3s ease; }
+  .imgprog-txt { font-size: 11.5px; color: var(--muted); margin-top: 5px; text-align: center; }
+  .img-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .img-card { border: 1px solid var(--hairline); border-radius: 11px; overflow: hidden; }
+  .ic-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 9px; }
+  .ic-head .pc-no { font-size: 11.5px; }
+  .ic-actions a, .ic-actions button {
+    background: none; border: none; color: var(--accent); font-family: inherit;
+    font-size: 11px; cursor: pointer; text-decoration: none; padding: 2px 4px;
+  }
+  .ic-frame { position: relative; width: 100%; background: var(--tile); }
+  .ic-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ic-spin { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+  .ic-spin .gl-dot { width: 12px; height: 12px; }
+  .ic-spin .ic-msg { font-size: 11px; color: var(--muted); }
 
   .connector { width: 2px; height: 20px; margin: 0 auto; background: var(--hairline); position: relative; }
   .connector::after {
@@ -392,7 +414,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v10</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v11</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -709,7 +731,53 @@
       </section>
 
       <div class="connector"></div>
-      <div class="ghost-node">＋ 4단계 — 예: TTS 나레이션 정리 · 썸네일 문구 · 해시태그 추천<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
+
+      <section class="node locked" id="shnode4">
+        <button class="node-head" id="shhead4" type="button" aria-expanded="false">
+          <span class="stepchip">4</span>
+          <div class="node-title">씬 이미지 생성 <span class="node-sub" id="shsub4">3단계 완료 후 시작할 수 있어요</span></div>
+          <span class="chev">▼</span>
+        </button>
+        <div class="node-body">
+          <div class="img-opts">
+            <div class="ai-model-row">
+              <span>생성기</span>
+              <select id="sh-imgprov" aria-label="이미지 생성기 선택">
+                <option value="pollinations">Pollinations — 무료 · 키 불필요</option>
+                <option value="gemini">Gemini 이미지 — 내 Gemini 키 사용</option>
+              </select>
+            </div>
+            <div class="ai-model-row">
+              <span>비율</span>
+              <select id="sh-ratio" aria-label="이미지 비율 선택">
+                <option value="16:9">16:9 가로 (일반 영상)</option>
+                <option value="9:16">9:16 세로 (쇼츠)</option>
+                <option value="1:1">1:1 정사각</option>
+              </select>
+            </div>
+            <div class="ai-row" style="margin-top:8px">
+              <input type="password" id="sh-tg-token" placeholder="텔레그램 봇 토큰 (선택 — 완료 시 알림)" autocomplete="off">
+              <button class="key-btn" id="sh-tg-conn" type="button">연결</button>
+            </div>
+            <div class="ai-state" id="sh-tg-state"></div>
+            <button class="copy-mini" id="sh-notif" type="button">🔔 소리/화면 알림 켜기</button>
+          </div>
+          <button class="step-start" id="shstart4" type="button">
+            <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 4단계 시작 — 씬 이미지 생성</span>
+          </button>
+          <div id="shcontent4" hidden>
+            <div class="imgprog" id="shimgprog" hidden>
+              <div class="imgbar"><div class="imgfill" id="shimgfill"></div></div>
+              <div class="imgprog-txt" id="shimgtxt"></div>
+            </div>
+            <div class="img-grid" id="sh-images"></div>
+            <div class="rerun-row"><button class="rerun" id="shrerun4" type="button">🔄 전체 다시 생성</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="connector"></div>
+      <div class="ghost-node">＋ 5단계 — 예: TTS 음성 생성 · 썸네일 문구 · 해시태그 추천<br>Claude에게 요청해 단계를 추가할 수 있습니다</div>
     </div>
 
     <div class="card-foot">
@@ -1731,12 +1799,12 @@
     "(3) 유튜브 커뮤니티 가이드에 안전한 수위에서, 시청자가 끝까지 보게 만드는 자극적이고 반전 있는 전개를 쓴다. " +
     "(4) 반드시 요청된 JSON 형식으로만 응답하고 JSON 밖에 다른 텍스트를 쓰지 않는다.";
 
-  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKeys: { claude: "", gemini: "" }, memProvider: "" };
+  var shstate = { kw: "", stories: [], sel: -1, script: null, prompts: null, memKeys: { claude: "", gemini: "", tg: "" }, memProvider: "" };
   var shStatus = statusCtl("sh-status");
   var shflow = flowCtl({
     pre: "sh",
-    lock: { 1: "키워드 입력 후 시작할 수 있어요", 2: "1단계에서 썰을 고르면 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요" },
-    labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트" }
+    lock: { 1: "키워드 입력 후 시작할 수 있어요", 2: "1단계에서 썰을 고르면 시작할 수 있어요", 3: "2단계 완료 후 시작할 수 있어요", 4: "3단계 완료 후 시작할 수 있어요" },
+    labels: { 1: "▶ 1단계 시작 — 썰 5개 생성", 2: "▶ 2단계 시작 — 5분 대본", 3: "▶ 3단계 시작 — 이미지 프롬프트", 4: "▶ 4단계 시작 — 씬 이미지 생성" }
   });
 
   // ── AI 공급자/키/모델 설정 ──
@@ -2175,6 +2243,7 @@
       shflow.setNode(1, "done");
       shflow.setNode(2, "locked");
       shflow.setNode(3, "locked");
+      shflow.setNode(4, "locked");
       stampNow("sh-stamp");
       shStatus("✓ 썰 5개 생성 완료 — 마음에 드는 썰을 하나 골라주세요");
     } else if (n === 2) {
@@ -2192,8 +2261,9 @@
       renderPrompts();
       hideManual(3);
       shflow.setNode(3, "done");
+      if (!shflow.isDone(4)) shflow.setNode(4, "ready");
       stampNow("sh-stamp");
-      shStatus("✓ 3단계 완료 — 프롬프트를 복사해 이미지 생성 툴에 붙여넣으세요");
+      shStatus("✓ 3단계 완료 — 4단계에서 씬 이미지를 바로 만들어보세요");
     }
   }
   function runShStep(n, userPromptFn, maxTok, loadingMsg) {
@@ -2249,6 +2319,7 @@
     for (var k = 0; k < kids.length; k++) kids[k].className = "story-card" + (k === i ? " sel" : "");
     shflow.setNode(2, "ready");
     shflow.setNode(3, "locked");
+    shflow.setNode(4, "locked");
     hideManual(2); hideManual(3);
     shStatus("‘" + shstate.stories[i].title + "’ 선택 — 2단계 시작을 누르세요");
   }
@@ -2294,6 +2365,294 @@
     }
   }
 
+  // ── 4단계: 씬 이미지 생성 ──
+  var IMG_RATIOS = { "16:9": [1280, 720], "9:16": [720, 1280], "1:1": [1024, 1024] };
+  var imgstate = { running: false, done: 0, ok: 0, total: 0, list: [], style: "", seed: 0, prov: "", ratio: "16:9", retrySalt: {}, imgModel: null };
+
+  function getGeminiKey() { return lsGet("ad_gemini_key") || shstate.memKeys.gemini || ""; }
+  function imgProv() { return lsGet("ad_img_prov") || "pollinations"; }
+  function imgRatioV() { return lsGet("ad_img_ratio") || "16:9"; }
+  function wait(ms) { return new Promise(function (r2) { setTimeout(r2, ms); }); }
+
+  function ensureAudio() {
+    try {
+      if (!window.__actx) window.__actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (window.__actx.state === "suspended") window.__actx.resume();
+    } catch (e) {}
+  }
+  function ding() {
+    try {
+      var ctx = window.__actx;
+      if (!ctx) return;
+      [0, 0.18].forEach(function (t, i) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = i ? 1318 : 880;
+        o.connect(g); g.connect(ctx.destination);
+        var st = ctx.currentTime + t;
+        g.gain.setValueAtTime(0.0001, st);
+        g.gain.exponentialRampToValueAtTime(0.18, st + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, st + 0.25);
+        o.start(st); o.stop(st + 0.3);
+      });
+    } catch (e) {}
+  }
+  function notifyDone(ok, total) {
+    try {
+      if ("Notification" in window && Notification.permission === "granted")
+        new Notification("🎬 씬 이미지 생성 완료", { body: ok + "/" + total + "장 완성 — 자동화 대시보드" });
+    } catch (e) {}
+    ding();
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    var t0 = document.title;
+    document.title = "✅ 이미지 완료 — 자동화 대시보드";
+    setTimeout(function () { document.title = t0; }, 6000);
+    var label = shstate.kw ? "‘" + shstate.kw + "’ " : "";
+    tgSend("🎬 " + label + "씬 이미지 생성 완료\n" + ok + "/" + total + "장 완성됐어요 — 대시보드에서 확인하세요.");
+  }
+
+  // ── 텔레그램 완료 알림 ──
+  function tgToken() { return lsGet("ad_tg_token") || shstate.memKeys.tg || ""; }
+  function tgChat() { return lsGet("ad_tg_chat") || ""; }
+  function tgApi(token, method) { return "https://api.telegram.org/bot" + token + "/" + method; }
+  function tgSend(text) {
+    var token = tgToken(), chat = tgChat();
+    if (!token || !chat) return Promise.resolve(false);
+    return fetch(tgApi(token, "sendMessage"), {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, text: text })
+    }).then(function (r) { return r.json(); }).then(function (j) { return !!(j && j.ok); })
+      ["catch"](function () { return false; });
+  }
+  function renderTgState() {
+    var s = el("sh-tg-state"), token = tgToken(), chat = tgChat();
+    if (token && chat) {
+      var nm = lsGet("ad_tg_name");
+      s.innerHTML = "✅ 텔레그램 연결됨" + (nm ? " (@" + esc(nm) + ")" : "") +
+        " — 이미지 완료 시 메시지가 옵니다 <button type=\"button\" id=\"sh-tg-del\">해제</button>";
+      var d = document.getElementById("sh-tg-del");
+      if (d) d.addEventListener("click", function () {
+        ["ad_tg_token", "ad_tg_chat", "ad_tg_name"].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+        shstate.memKeys.tg = "";
+        renderTgState();
+        shStatus("텔레그램 알림을 해제했어요");
+      });
+    } else {
+      s.innerHTML = "봇 토큰을 넣고 연결하세요 · 봇 만들기: 텔레그램에서 <b>@BotFather</b> 검색 → <b>/newbot</b>";
+    }
+  }
+  function tgConnect() {
+    var token = el("sh-tg-token").value.trim() || tgToken();
+    if (!token) { shStatus("텔레그램 봇 토큰을 먼저 입력하세요", true); return; }
+    shStatus("텔레그램 봇을 확인하는 중…");
+    fetch(tgApi(token, "getMe")).then(function (r) { return r.json(); })
+      .then(function (me) {
+        if (!me || !me.ok) throw new Error("BAD_TOKEN");
+        var botName = me.result && me.result.username;
+        lsSet("ad_tg_token", token);
+        if (!lsGet("ad_tg_token")) shstate.memKeys.tg = token;
+        if (botName) lsSet("ad_tg_name", botName);
+        return fetch(tgApi(token, "getUpdates")).then(function (r) { return r.json(); }).then(function (up) {
+          var chatId = null;
+          ((up && up.result) || []).forEach(function (u) {
+            var m = u.message || u.edited_message || u.channel_post || u.my_chat_member;
+            if (m && m.chat && (m.chat.id || m.chat.id === 0)) chatId = m.chat.id;
+          });
+          if (chatId === null) { var e = new Error("NO_CHAT"); e.bot = botName; throw e; }
+          lsSet("ad_tg_chat", String(chatId));
+          el("sh-tg-token").value = "";
+          renderTgState();
+          shStatus("텔레그램 연결 완료 — 테스트 메시지를 보냈어요");
+          tgSend("✅ 자동화 대시보드와 연결됐어요! 이미지 생성이 끝나면 여기로 알려드릴게요.");
+        });
+      })["catch"](function (e) {
+        if (e && e.message === "NO_CHAT")
+          shStatus("거의 다 됐어요 — 텔레그램에서 봇 @" + (e.bot || "내봇") + " 에게 아무 메시지나 먼저 보낸 뒤, 다시 ‘연결’을 눌러주세요", true);
+        else if (e && e.message === "BAD_TOKEN")
+          shStatus("봇 토큰이 올바르지 않아요 — BotFather가 준 토큰을 확인하세요", true);
+        else
+          shStatus("텔레그램 연결에 실패했어요 — 잠시 후 다시 시도해 주세요", true);
+      });
+  }
+  function renderNotifBtn() {
+    var b = el("sh-notif");
+    if (!("Notification" in window)) {
+      b.textContent = "🔕 이 브라우저는 알림 미지원 — 완료 시 소리로 알려드려요";
+      b.disabled = true;
+      return;
+    }
+    var p = Notification.permission;
+    b.textContent = p === "granted" ? "🔔 소리/화면 알림 켜짐"
+      : p === "denied" ? "🔕 알림 차단됨 — 브라우저 설정에서 허용 필요"
+      : "🔔 소리/화면 알림 켜기";
+    b.disabled = p !== "default";
+  }
+
+  function updateImgProg() {
+    var pct = imgstate.total ? Math.round(imgstate.done / imgstate.total * 100) : 0;
+    el("shimgprog").hidden = false;
+    el("shimgfill").style.width = pct + "%";
+    el("shimgtxt").textContent = imgstate.running
+      ? "이미지 " + imgstate.done + "/" + imgstate.total + " 생성 중… (성공 " + imgstate.ok + ")"
+      : "이미지 " + imgstate.ok + "/" + imgstate.total + " 완성";
+  }
+  function ratioCss() { var d = IMG_RATIOS[imgstate.ratio] || IMG_RATIOS["16:9"]; return d[0] + " / " + d[1]; }
+  function cardSpin(i, msg) {
+    el("shimgf" + i).innerHTML = '<div class="ic-spin"><span class="gl-dot"></span><span class="ic-msg">' + esc(msg || "생성 중…") + "</span></div>";
+    el("shimga" + i).innerHTML = "";
+  }
+  function renderImgGrid() {
+    el("sh-images").innerHTML = imgstate.list.map(function (p, i) {
+      return '<div class="img-card"><div class="ic-head"><span class="pc-no">씬 ' + esc(p.no) + '</span>' +
+        '<span class="ic-actions" id="shimga' + i + '"></span></div>' +
+        '<div class="ic-frame" id="shimgf' + i + '" style="aspect-ratio:' + ratioCss() + '"></div></div>';
+    }).join("");
+    imgstate.list.forEach(function (_, i) { cardSpin(i, "대기 중"); });
+  }
+  function setCardImg(i, src, isData) {
+    el("shimgf" + i).innerHTML = '<img alt="씬 ' + (i + 1) + ' 이미지" src="' + esc(src) + '">';
+    el("shimga" + i).innerHTML = isData
+      ? '<a href="' + esc(src) + '" download="scene-' + (i + 1) + '.png">⬇ 저장</a>'
+      : '<a href="' + esc(src) + '" target="_blank" rel="noopener">↗ 원본</a>';
+  }
+  function setCardFail(i, msg) {
+    el("shimgf" + i).innerHTML = '<div class="ic-spin"><span class="ic-msg">⚠️ ' + esc(msg || "실패") + "</span></div>";
+    var a = el("shimga" + i);
+    a.innerHTML = '<button type="button">🔄 재시도</button>';
+    a.querySelector("button").addEventListener("click", function () { retryOne(i); });
+  }
+  function retryOne(i) {
+    if (imgstate.running) return;
+    imgstate.running = true;
+    imgstate.done -= 1;
+    imgstate.retrySalt[i] = (imgstate.retrySalt[i] || 0) + 13;
+    updateImgProg();
+    genOneImage(i).then(function () {
+      imgstate.running = false;
+      updateImgProg();
+      if (imgstate.ok === imgstate.total) {
+        notifyDone(imgstate.ok, imgstate.total);
+        shStatus("✓ 이미지 " + imgstate.ok + "장 모두 완성!");
+      }
+    });
+  }
+  function findImgModel() {
+    if (imgstate.imgModel) return Promise.resolve(imgstate.imgModel);
+    return fetch(GEMINI_BASE + "/v1beta/models?pageSize=100", { headers: { "x-goog-api-key": getGeminiKey() } })
+      .then(function (r2) { return r2.json(); })
+      .then(function (d) {
+        var hit = ((d && d.models) || []).map(function (m) { return String(m.name || "").replace(/^models\//, ""); })
+          .filter(function (id) { return /gemini/i.test(id) && /image/i.test(id) && !/embedding/i.test(id); })[0];
+        imgstate.imgModel = hit || "gemini-2.5-flash-image";
+        return imgstate.imgModel;
+      })["catch"](function () { imgstate.imgModel = "gemini-2.5-flash-image"; return imgstate.imgModel; });
+  }
+  function genOneImage(i) {
+    var p = imgstate.list[i];
+    var prompt = p.en + (imgstate.style ? ", " + imgstate.style : "");
+    cardSpin(i, "생성 중…");
+    if (imgstate.prov === "pollinations") {
+      return new Promise(function (resolve) {
+        var d = IMG_RATIOS[imgstate.ratio];
+        var url = "https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt) +
+          "?width=" + d[0] + "&height=" + d[1] + "&nologo=true&seed=" + (imgstate.seed + i * 7 + (imgstate.retrySalt[i] || 0));
+        var im = new Image();
+        var to = setTimeout(function () { im.onload = im.onerror = null; fin(false); }, 120000);
+        function fin(okv) {
+          clearTimeout(to);
+          if (okv) { setCardImg(i, url, false); imgstate.ok += 1; }
+          else setCardFail(i, "시간 초과 또는 오류");
+          imgstate.done += 1; updateImgProg(); resolve();
+        }
+        im.onload = function () { fin(true); };
+        im.onerror = function () { fin(false); };
+        im.src = url;
+      });
+    }
+    if (!getGeminiKey()) {
+      setCardFail(i, "Gemini 키 없음");
+      imgstate.done += 1; updateImgProg();
+      return Promise.resolve();
+    }
+    return findImgModel().then(function (m) {
+      function call(noCfg) {
+        var gc = { responseModalities: ["TEXT", "IMAGE"] };
+        if (!noCfg) gc.imageConfig = { aspectRatio: imgstate.ratio };
+        return fetch(GEMINI_BASE + "/v1beta/models/" + encodeURIComponent(m) + ":generateContent", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": getGeminiKey() },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt + (noCfg ? ", aspect ratio " + imgstate.ratio : "") }] }],
+            generationConfig: gc
+          })
+        }).then(function (res) {
+          return res.json()["catch"](function () { return {}; }).then(function (j) {
+            if (!res.ok) { var e = new Error((j.error && j.error.message) || ("HTTP " + res.status)); e.status = res.status; throw e; }
+            return j;
+          });
+        })["catch"](function (e) {
+          if (!noCfg && e && e.status === 400) return call(true);
+          throw e;
+        });
+      }
+      return call(false);
+    }).then(function (d2) {
+      var parts = (d2 && d2.candidates && d2.candidates[0] && d2.candidates[0].content && d2.candidates[0].content.parts) || [];
+      var img = null;
+      parts.forEach(function (pp) {
+        var idt = pp.inlineData || pp.inline_data;
+        if (!img && idt && idt.data) img = idt;
+      });
+      if (!img) throw new Error("응답에 이미지 없음");
+      setCardImg(i, "data:" + (img.mimeType || img.mime_type || "image/png") + ";base64," + img.data, true);
+      imgstate.ok += 1; imgstate.done += 1; updateImgProg();
+    })["catch"](function (e) {
+      setCardFail(i, e && e.status === 429 ? "무료 한도 초과 — 잠시 후 재시도" : ((e && e.message) || "오류"));
+      imgstate.done += 1; updateImgProg();
+    });
+  }
+  function runSh4() {
+    if (shflow.isLocked(4) || imgstate.running) return;
+    if (!shstate.prompts || !(shstate.prompts.prompts || []).length) {
+      shStatus("3단계에서 이미지 프롬프트를 먼저 만들어주세요", true);
+      return;
+    }
+    imgstate.prov = imgProv();
+    imgstate.ratio = imgRatioV();
+    if (imgstate.prov === "gemini" && !getGeminiKey()) {
+      shStatus("Gemini 키가 없어요 — 생성기를 Pollinations로 바꾸거나 상단에서 Gemini 키를 저장하세요", true);
+      return;
+    }
+    ensureAudio();
+    imgstate.list = shstate.prompts.prompts.slice(0, 12);
+    imgstate.style = shstate.prompts.style || "";
+    imgstate.total = imgstate.list.length;
+    imgstate.done = 0; imgstate.ok = 0;
+    imgstate.seed = Math.floor(Math.random() * 900000);
+    imgstate.retrySalt = {};
+    imgstate.running = true;
+    el("shcontent4").hidden = false;
+    renderImgGrid();
+    shflow.setLoading(4, true);
+    updateImgProg();
+    shStatus("씬 이미지를 순서대로 생성하는 중… 화면을 켜둔 채 기다려주세요");
+    var chain = Promise.resolve();
+    imgstate.list.forEach(function (_, i) {
+      chain = chain.then(function () { return genOneImage(i); })
+        .then(function () { if (imgstate.prov === "gemini" && i < imgstate.total - 1) return wait(1500); });
+    });
+    chain.then(function () {
+      imgstate.running = false;
+      updateImgProg();
+      shflow.setLoading(4, false);
+      shflow.setNode(4, "done");
+      stampNow("sh-stamp");
+      notifyDone(imgstate.ok, imgstate.total);
+      shStatus(imgstate.ok === imgstate.total
+        ? "✓ 이미지 " + imgstate.ok + "장 모두 완성! 카드의 저장 버튼으로 받으세요"
+        : "이미지 " + imgstate.ok + "/" + imgstate.total + "장 완성 — 실패한 씬은 카드에서 재시도하세요", imgstate.ok !== imgstate.total);
+    });
+  }
+
   // ── 수동 모드 바인딩 ──
   [1, 2, 3].forEach(function (n) {
     el("shcopy" + n).addEventListener("click", function () { copyText(shPending[n] || "", this); });
@@ -2319,9 +2678,29 @@
   el("sh-kw").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); runSh1(); }
   });
+  el("shstart4").addEventListener("click", runSh4);
+  el("shrerun4").addEventListener("click", runSh4);
+  shflow.bindHead(4, runSh4);
+  el("sh-imgprov").value = imgProv();
+  el("sh-imgprov").addEventListener("change", function () { lsSet("ad_img_prov", el("sh-imgprov").value); });
+  el("sh-ratio").value = imgRatioV();
+  el("sh-ratio").addEventListener("change", function () { lsSet("ad_img_ratio", el("sh-ratio").value); });
+  el("sh-notif").addEventListener("click", function () {
+    ensureAudio();
+    if (!("Notification" in window)) return;
+    try { Notification.requestPermission().then(renderNotifBtn)["catch"](function () {}); }
+    catch (e) { renderNotifBtn(); }
+  });
+  renderNotifBtn();
+  el("sh-tg-conn").addEventListener("click", tgConnect);
+  el("sh-tg-token").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); tgConnect(); }
+  });
+  renderTgState();
   shflow.setNode(1, "ready");
   shflow.setNode(2, "locked");
   shflow.setNode(3, "locked");
+  shflow.setNode(4, "locked");
   renderKeyState();
   if (getKey()) loadModels();
 })();
