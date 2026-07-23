@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="15">
+<meta name="app-version" content="17">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -320,6 +320,12 @@
   .story-card .sc-sum { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
   .story-card .sc-pick { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 6px; display: none; }
   .story-card.sel .sc-pick { display: block; }
+  .rec-wrap { margin-top: 12px; }
+  .rec-btn { min-height: 46px; font-size: 14.5px; }
+  .rec-card { position: relative; }
+  .rec-card .sc-pick { color: var(--accent); }
+  #sh-topics { margin-top: 2px; }
+  #sh-topics .rec-card:first-child { margin-top: 10px; }
   .gen-live { border: 1px solid var(--hairline); border-radius: 11px; padding: 10px 12px; margin-top: 10px; }
   .gl-head { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
   .gl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease infinite; flex-shrink: 0; }
@@ -434,7 +440,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v15</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v17</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -652,6 +658,27 @@
            autocomplete="off" enterkeyhint="go">
     <div class="status" id="sh-status">키워드를 넣고 1단계 시작을 누르세요 · 모든 썰은 픽션으로 생성됩니다</div>
 
+    <div class="rec-wrap">
+      <button class="step-start rec-btn" id="sh-rec-btn" type="button">
+        <span class="spinner" aria-hidden="true"></span><span class="lbl">🔥 요즘 핫한 자극 주제 10개 추천받기</span>
+      </button>
+      <div class="gen-live" id="shlive0" hidden>
+        <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta0">실시간 생성 중…</span></div>
+        <div class="gl-sec-label" id="shthinklab0" hidden>💭 AI의 생각</div>
+        <pre class="gl-think" id="shlivethink0" hidden></pre>
+        <div class="gl-sec-label" id="shoutlab0" hidden>✍️ 결과 작성</div>
+        <pre class="gl-text" id="shlivetext0" hidden></pre>
+      </div>
+      <div class="manual-box" id="shmanual0" hidden>
+        <div class="mb-title">수동 모드 — Claude 앱에서 실행</div>
+        <div class="mb-desc">① 프롬프트 복사 → ② Claude 앱에서 실행 → ③ 답변(JSON)을 붙여넣고 적용</div>
+        <button class="copy-mini" id="shcopy0" type="button">📋 프롬프트 복사</button>
+        <textarea id="shpaste0" placeholder="Claude 답변(JSON)을 그대로 붙여넣기"></textarea>
+        <button class="step-start mb-apply" id="shapply0" type="button"><span class="lbl">적용하기</span></button>
+      </div>
+      <div id="sh-topics"></div>
+    </div>
+
     <div class="flow">
       <section class="node" id="shnode1">
         <button class="node-head" id="shhead1" type="button">
@@ -860,6 +887,13 @@
                 <option value="gemini">Gemini TTS — 내 Gemini 키 · 감정/톤 제어</option>
               </select>
             </div>
+            <div class="ai-model-row">
+              <span>낭독 톤</span>
+              <input id="sh-tts-style" type="text" aria-label="공통 낭독 톤"
+                style="flex:1;min-width:0;min-height:34px;border:1px solid var(--hairline);border-radius:8px;background:var(--plane);color:var(--ink);font-family:inherit;font-size:12.5px;padding:0 9px"
+                placeholder="모든 라인 공통 낭독 톤">
+            </div>
+            <div class="ai-state">이 톤이 <b>모든 라인에 공통</b> 적용돼 속도·발성이 통일됩니다. 라인별 감정은 목소리 색에만 살짝 반영돼요.</div>
           </div>
           <button class="step-start" id="shstart6" type="button">
             <span class="spinner" aria-hidden="true"></span><span class="lbl">▶ 6단계 시작 — 음성 생성</span>
@@ -2275,6 +2309,13 @@
   }
 
   // ── 프롬프트 구성 ──
+  function buildP0() {
+    return "유튜브 쇼츠·인스타 릴스·온라인 커뮤니티에서 요즘 조회수가 잘 나오는 ‘자극적인 썰’ 장르의 인기 주제 10개를 추천하라.\n" +
+      "실존 인물·실제 사건이 아니라, 지금 이런 소재가 잘 먹힌다는 ‘주제 테마’를 제시하라(픽션 소재 발상용).\n" +
+      "각 항목: title(끌리는 주제명, 20자 이내), hook(왜 화제가 되는지·후킹 포인트 1문장), keyword(이 주제로 썰을 만들 때 넣을 핵심 키워드 1~2단어).\n" +
+      "서로 다른 장르로 다양하게 섞어라(막장 가족·치정/불륜·직장 갑질·복수극·이웃/층간소음·돈/상속·학창시절·연애/소개팅·사기 등).\n" +
+      "JSON 형식으로만 답하라: {\"topics\":[{\"title\":\"\",\"hook\":\"\",\"keyword\":\"\"}]} (정확히 10개)";
+  }
   function buildP1(kw) {
     return "키워드: \"" + kw + "\"\n" +
       "이 키워드로 유튜브 쇼츠썰 아이디어 5개를 만들어라. 각 썰은 서로 다른 상황·전개여야 한다.\n" +
@@ -2308,8 +2349,9 @@
       "1) 등장 화자를 식별하라. 대부분 1인칭 ‘내레이터’이며, 대사에 등장하는 인물이 있으면 별도 화자로 나눠라.\n" +
       "2) 각 화자마다 gender(성별), age(나이대), tone(목소리 톤)을 정하고, 아래 목록에서 어울리는 voice 하나를 배정하라.\n" +
       "   사용 가능한 voice: " + GEMINI_TTS_VOICES + "\n" +
-      "3) 대본을 자연스러운 대사 라인 8~16개로 나누고, 각 라인마다 speaker(화자), style(한국어 감정·톤 연기지시, 예: ‘낮고 떨리는 목소리로 천천히’), text(실제 읽을 문장)를 작성하라.\n" +
+      "3) 대본을 자연스러운 대사 라인 8~16개로 나누고, 각 라인마다 speaker(화자), style(감정·분위기), text(실제 읽을 문장)를 작성하라.\n" +
       "   내레이션 라인의 speaker는 ‘내레이터’로 한다.\n" +
+      "★ 매우 중요(일관성): 모든 라인의 말하기 속도는 ‘보통 빠르기’로 동일하게 유지한다. style에는 ‘천천히/빠르게/느리게/급하게/늘어뜨려’ 같은 속도·길이 지시를 절대 넣지 마라. style은 감정·분위기 단어만 짧게 적는다(예: ‘긴장감 있게’, ‘담담하게’, ‘떨림을 살짝’, ‘단호하게’). 이 감정은 목소리 톤에만 반영되고 속도는 바뀌지 않는다. 내레이터 voice는 전체에서 하나로 고정한다.\n" +
       "대본:\n" + lines + "\n" +
       "JSON 형식으로만 답하라: {\"cast\":[{\"role\":\"\",\"gender\":\"\",\"age\":\"\",\"tone\":\"\",\"voice\":\"\"}],\"lines\":[{\"no\":1,\"speaker\":\"\",\"style\":\"\",\"text\":\"\"}]}";
   }
@@ -2414,9 +2456,58 @@
 
   function runSh1() {
     var kw = el("sh-kw").value.trim();
-    if (!kw) { shStatus("먼저 썰 키워드를 입력해 주세요 (예: 시댁, 직장상사)", true); return; }
+    if (!kw) { shStatus("먼저 썰 키워드를 입력하거나, 아래 ‘핫한 주제 추천’을 눌러 주제를 골라주세요", true); return; }
     shstate.kw = kw;
     runShStep(1, function () { return buildP1(kw); }, 3000, "‘" + kw + "’ 썰 5개를 생성하는 중… (10~30초)");
+  }
+
+  // ── 핫 주제 셀프 추천 ──
+  var recPending = null, recBusy = false;
+  function renderTopics(list) {
+    el("sh-topics").innerHTML = list.map(function (t) {
+      return '<button class="story-card rec-card" type="button" data-kw="' + esc(t.keyword || t.title) + '">' +
+        '<div class="sc-title">🔥 ' + esc(t.title) + "</div>" +
+        '<div class="sc-sum">' + esc(t.hook || "") + "</div>" +
+        '<div class="sc-pick" style="display:block">이 주제로 썰 5개 만들기 →</div></button>';
+    }).join("");
+    Array.prototype.forEach.call(el("sh-topics").querySelectorAll(".rec-card"), function (b) {
+      b.addEventListener("click", function () {
+        el("sh-kw").value = b.getAttribute("data-kw");
+        runSh1();
+        try { el("shnode1").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+      });
+    });
+  }
+  function setRecLoading(on) {
+    var b = el("sh-rec-btn");
+    b.disabled = on;
+    b.classList.toggle("loading", on);
+    b.querySelector(".lbl").textContent = on ? "추천받는 중…" : "🔥 요즘 핫한 자극 주제 10개 추천받기";
+  }
+  function applyTopics(obj) {
+    if (!obj || !obj.topics || !obj.topics.length) throw new Error("JSON_PARSE");
+    renderTopics(obj.topics.slice(0, 10));
+    el("shmanual0").hidden = true;
+    shStatus("✓ 추천 주제 10개 — 마음에 드는 걸 누르면 그 주제로 썰 5개를 만들어요");
+  }
+  function runRecommend() {
+    if (recBusy) return;
+    var user = buildP0();
+    if (!getKey()) {
+      recPending = manualText(user);
+      el("shmanual0").hidden = false;
+      el("sh-topics").innerHTML = "";
+      shStatus("API 키가 없어 수동 모드예요 — 프롬프트를 복사해 Claude 앱에서 실행하세요");
+      return;
+    }
+    el("shmanual0").hidden = true;
+    recBusy = true; setRecLoading(true);
+    shStatus("요즘 핫한 주제를 뽑는 중… (10~30초)");
+    startLive(0);
+    genStreamText(COMMON_SYS, user, 2500, function (kind, t) { liveDelta(0, kind, t); })
+      .then(function (text) { applyTopics(parseClaudeJson(text)); })
+      ["catch"](function (e) { shStatus(aiErrMsg(e), true); })
+      .then(function () { stopLive(0); recBusy = false; setRecLoading(false); });
   }
   function runSh2() {
     if (shstate.sel < 0 || !shstate.stories[shstate.sel]) { shStatus("1단계에서 썰을 먼저 골라주세요", true); return; }
@@ -2891,7 +2982,15 @@
 
   // ── 6단계: TTS 음성 생성 ──
   var GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+  var DEFAULT_TTS_STYLE = "일정하고 또렷한 보통 속도의, 몰입감 있는 차분한 썰 내레이션 톤";
   function ttsProv() { return lsGet("ad_tts_prov") || "pollinations"; }
+  function ttsGlobalStyle() { return (lsGet("ad_tts_style") || "").trim() || DEFAULT_TTS_STYLE; }
+  // 속도·길이 지시어 제거 → 라인 간 속도 통일
+  function sanitizeEmotion(s) {
+    return String(s || "")
+      .replace(/(아주\s*|매우\s*|조금\s*|약간\s*)?(천천히|느리게|느릿느릿|느긋하게|빠르게|급하게|서둘러서?|서두르며|빠른\s*속도로?|길게\s*끌며|늘어뜨(리며|려|linebreak)?|또박또박\s*느리게)/g, "")
+      .replace(/\s{2,}/g, " ").replace(/^[\s,·]+|[\s,·]+$/g, "").trim();
+  }
   var ttsstate = { running: false, done: 0, ok: 0, total: 0, lines: [], urls: [] };
 
   function castFor(speaker) {
@@ -2966,7 +3065,10 @@
     el("shaud" + i).innerHTML = '<div class="lc-wait">🔊 생성 중…</div>';
     if (ttsProv() === "gemini") {
       if (!getGeminiKey()) { audioFail(i, "Gemini 키 없음"); ttsstate.done += 1; updateTtsProg(); return Promise.resolve(); }
-      var text = (l.style ? l.style + "로 말하듯이 읽어줘: " : "") + (l.text || "");
+      var emo = sanitizeEmotion(l.style);
+      var text = ttsGlobalStyle() + "으로 읽어줘. 전체 영상 내내 같은 내레이터로서 말하기 속도와 발성 크기는 항상 일정하게 유지하고, 문장을 늘어뜨리거나 급하게 몰지 마." +
+        (emo ? " 이 문장의 감정(" + emo + ")은 목소리 톤에만 은은하게 싣되 속도는 바꾸지 마." : "") +
+        "\n읽을 문장: " + (l.text || "");
       return fetch(GEMINI_BASE + "/v1beta/models/" + GEMINI_TTS_MODEL + ":generateContent", {
         method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": getGeminiKey() },
         body: JSON.stringify({
@@ -2988,8 +3090,9 @@
         ttsstate.done += 1; updateTtsProg();
       });
     }
-    // Pollinations (무료)
-    var say = (l.style ? "(" + l.style + ") " : "") + (l.text || "");
+    // Pollinations (무료) — 속도어 제거로 라인 간 통일
+    var pemo = sanitizeEmotion(l.style);
+    var say = (pemo ? "(" + pemo + " 톤으로) " : "") + (l.text || "");
     var url = "https://text.pollinations.ai/" + encodeURIComponent(say) + "?model=openai-audio&voice=" + pollVoiceFor(c);
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
     var to = ctrl && setTimeout(function () { ctrl.abort(); }, 90000);
@@ -3068,8 +3171,16 @@
   shflow.bindHead(6, runSh6);
   el("sh-ttsprov").value = ttsProv();
   el("sh-ttsprov").addEventListener("change", function () { lsSet("ad_tts_prov", el("sh-ttsprov").value); });
+  el("sh-tts-style").value = lsGet("ad_tts_style") || DEFAULT_TTS_STYLE;
+  el("sh-tts-style").addEventListener("change", function () { lsSet("ad_tts_style", el("sh-tts-style").value.trim()); });
   el("sh-kw").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); runSh1(); }
+  });
+  el("sh-rec-btn").addEventListener("click", runRecommend);
+  el("shcopy0").addEventListener("click", function () { copyText(recPending || "", this); });
+  el("shapply0").addEventListener("click", function () {
+    try { applyTopics(parseClaudeJson(el("shpaste0").value)); }
+    catch (e) { shStatus("붙여넣은 내용에서 JSON을 읽지 못했어요 — Claude 답변 전체를 그대로 붙여넣어 주세요", true); }
   });
   el("shstart4").addEventListener("click", runSh4);
   el("shrerun4").addEventListener("click", runSh4);
