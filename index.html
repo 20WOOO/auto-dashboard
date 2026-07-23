@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="11">
+<meta name="app-version" content="12">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -414,7 +414,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v11</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v12</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -2411,7 +2411,11 @@
   }
 
   // ── 텔레그램 완료 알림 ──
-  function tgToken() { return lsGet("ad_tg_token") || shstate.memKeys.tg || ""; }
+  // 내장 봇(공개 저장소에 노출됨 — 문제 시 BotFather /revoke 후 아래 값 교체)
+  var DEFAULT_TG_TOKEN = "8816499887:AAGmQKtDMW67OxMkZLkCsbR-aCckx4qzQOg";
+  var DEFAULT_TG_NAME = "duddn9690_bot";
+  function tgTokenRaw() { return lsGet("ad_tg_token") || shstate.memKeys.tg || DEFAULT_TG_TOKEN; }
+  function tgToken() { return lsGet("ad_tg_off") ? "" : tgTokenRaw(); }
   function tgChat() { return lsGet("ad_tg_chat") || ""; }
   function tgApi(token, method) { return "https://api.telegram.org/bot" + token + "/" + method; }
   function tgSend(text) {
@@ -2424,24 +2428,41 @@
       ["catch"](function () { return false; });
   }
   function renderTgState() {
-    var s = el("sh-tg-state"), token = tgToken(), chat = tgChat();
+    var s = el("sh-tg-state");
+    if (lsGet("ad_tg_off")) {
+      s.innerHTML = "🔕 텔레그램 알림 꺼짐 — 다시 켜려면 ‘연결’을 누르세요";
+      return;
+    }
+    var token = tgToken(), chat = tgChat(), nm = lsGet("ad_tg_name") || DEFAULT_TG_NAME;
     if (token && chat) {
-      var nm = lsGet("ad_tg_name");
-      s.innerHTML = "✅ 텔레그램 연결됨" + (nm ? " (@" + esc(nm) + ")" : "") +
-        " — 이미지 완료 시 메시지가 옵니다 <button type=\"button\" id=\"sh-tg-del\">해제</button>";
+      s.innerHTML = "✅ 텔레그램 연결됨 (@" + esc(nm) + ") — 이미지 완료 시 메시지가 옵니다 <button type=\"button\" id=\"sh-tg-del\">끄기</button>";
       var d = document.getElementById("sh-tg-del");
       if (d) d.addEventListener("click", function () {
-        ["ad_tg_token", "ad_tg_chat", "ad_tg_name"].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
-        shstate.memKeys.tg = "";
+        lsSet("ad_tg_off", true);
         renderTgState();
-        shStatus("텔레그램 알림을 해제했어요");
+        shStatus("텔레그램 알림을 껐어요 — 다시 켜려면 연결을 누르세요");
       });
+    } else if (token) {
+      s.innerHTML = "🔔 봇 <b>@" + esc(nm) + "</b> 준비됨 — 텔레그램에서 이 봇에게 아무 메시지나 한 번 보내면 자동 연결돼요 (안 되면 ‘연결’ 클릭)";
     } else {
       s.innerHTML = "봇 토큰을 넣고 연결하세요 · 봇 만들기: 텔레그램에서 <b>@BotFather</b> 검색 → <b>/newbot</b>";
     }
   }
+  function tgAutoResolve() {
+    if (lsGet("ad_tg_off") || tgChat() || !tgToken()) return;
+    fetch(tgApi(tgToken(), "getUpdates")).then(function (r) { return r.json(); })
+      .then(function (up) {
+        var chatId = null;
+        ((up && up.result) || []).forEach(function (u) {
+          var m = u.message || u.edited_message || u.channel_post || u.my_chat_member;
+          if (m && m.chat && (m.chat.id || m.chat.id === 0)) chatId = m.chat.id;
+        });
+        if (chatId !== null) { lsSet("ad_tg_chat", String(chatId)); renderTgState(); }
+      })["catch"](function () {});
+  }
   function tgConnect() {
-    var token = el("sh-tg-token").value.trim() || tgToken();
+    try { localStorage.removeItem("ad_tg_off"); } catch (e) {}
+    var token = el("sh-tg-token").value.trim() || tgTokenRaw();
     if (!token) { shStatus("텔레그램 봇 토큰을 먼저 입력하세요", true); return; }
     shStatus("텔레그램 봇을 확인하는 중…");
     fetch(tgApi(token, "getMe")).then(function (r) { return r.json(); })
@@ -2696,7 +2717,9 @@
   el("sh-tg-token").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); tgConnect(); }
   });
+  el("tab-shorts").addEventListener("click", tgAutoResolve);
   renderTgState();
+  tgAutoResolve();
   shflow.setNode(1, "ready");
   shflow.setNode(2, "locked");
   shflow.setNode(3, "locked");
