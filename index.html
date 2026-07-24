@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="19">
+<meta name="app-version" content="20">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -451,7 +451,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v19</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v20</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -984,6 +984,20 @@
           if (!done && pending === 0) reject(lastErr);
         });
       });
+    });
+  }
+  // 프록시를 순서대로 시도하며 validate(text)를 통과한 첫 응답만 채택(에러페이지·빈응답 제외)
+  function fetchTextValidated(url, validate) {
+    var i = 0;
+    return new Promise(function (resolve, reject) {
+      (function next() {
+        if (i >= PROXIES.length) { reject(new Error("all proxies failed")); return; }
+        var pu = PROXIES[i++](url);
+        fetchRaw(pu, true).then(function (t) {
+          if (t && (!validate || validate(t))) resolve(t);
+          else next();
+        }, function () { next(); });
+      })();
     });
   }
 
@@ -2512,6 +2526,26 @@
   var GNEWS_HOT = "https://news.google.com/rss/search?q=" +
     encodeURIComponent("논란 OR 충격 OR 폭로 OR 갑질 OR 불륜 OR 이혼 OR 실형 OR 폭행 OR 열애 OR 결별 OR 막장 OR 학폭 OR 사연 OR 내연 OR 패륜 OR 층간소음") +
     "&hl=ko&gl=KR&ceid=KR:ko";
+  var GNEWS_TOP = "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko";
+  function hasItem(t) { return t.indexOf("<item") >= 0; }
+  function filterHot(xml) {
+    var doc = new DOMParser().parseFromString(xml, "text/xml");
+    var seen = {}, items = [];
+    Array.prototype.slice.call(doc.querySelectorAll("item")).forEach(function (it) {
+      function tx(tag) { var e = it.querySelector(tag); return e ? e.textContent : ""; }
+      var title = tx("title"), src = tx("source");
+      if (src && title.length > (" - " + src).length && title.slice(-(" - " + src).length) === " - " + src)
+        title = title.slice(0, -(" - " + src).length);
+      title = title.trim();
+      if (!title) return;
+      if (SENS_DROP.some(function (k) { return title.indexOf(k) >= 0; })) return;
+      if (!SENS_KEEP.some(function (k) { return title.indexOf(k) >= 0; })) return;
+      var key = title.slice(0, 18);
+      if (seen[key]) return; seen[key] = 1;
+      items.push({ title: title, link: tx("link"), source: src, date: tx("pubDate") });
+    });
+    return items;
+  }
   function renderHot(items) {
     el("sh-topics").innerHTML = items.map(function (t) {
       return '<div class="story-card rec-card trend-card" data-kw="' + esc(t.title) + '">' +
@@ -2539,28 +2573,28 @@
     recBusy = true; setTrendLoading(true);
     el("shmanual0").hidden = true; el("shlive0").hidden = true;
     shStatus("한국 화제 이슈를 가져와 자극 필터를 적용하는 중…");
-    viaProxy(GNEWS_HOT, true).then(function (xml) {
-      var doc = new DOMParser().parseFromString(xml, "text/xml");
-      var seen = {}, items = [];
-      Array.prototype.slice.call(doc.querySelectorAll("item")).forEach(function (it) {
-        function tx(tag) { var e = it.querySelector(tag); return e ? e.textContent : ""; }
-        var title = tx("title"), src = tx("source");
-        if (src && title.length > (" - " + src).length && title.slice(-(" - " + src).length) === " - " + src)
-          title = title.slice(0, -(" - " + src).length);
-        title = title.trim();
-        if (!title) return;
-        if (SENS_DROP.some(function (k) { return title.indexOf(k) >= 0; })) return;
-        if (!SENS_KEEP.some(function (k) { return title.indexOf(k) >= 0; })) return;
-        var key = title.slice(0, 18);
-        if (seen[key]) return; seen[key] = 1;
-        items.push({ title: title, link: tx("link"), source: src, date: tx("pubDate") });
-      });
-      if (!items.length) throw new Error("no items");
-      renderHot(items.slice(0, 20));
-      shStatus("✓ 한국 화제 이슈 " + Math.min(items.length, 20) + "개 (자극 필터 적용) — 하나 누르면 그 소재로 썰을 만들어요");
-    })["catch"](function () {
-      shStatus("이슈를 가져오지 못했어요 — 잠시 후 다시 시도하거나, 아래 AI 추천/직접 입력을 이용하세요", true);
-    }).then(function () { recBusy = false; setTrendLoading(false); });
+    // 검색 피드 → (실패 시) 주요뉴스 피드. 각각 프록시 순회 + <item> 검증.
+    fetchTextValidated(GNEWS_HOT, hasItem)
+      .then(function (xml) {
+        var items = filterHot(xml);
+        if (items.length) return items;
+        return fetchTextValidated(GNEWS_TOP, hasItem).then(filterHot); // 검색결과 필터 후 0개면 주요뉴스로 보강
+      })
+      ["catch"](function () {
+        return fetchTextValidated(GNEWS_TOP, hasItem).then(filterHot); // 검색 피드 자체 실패 시 주요뉴스
+      })
+      .then(function (items) {
+        if (!items || !items.length) {
+          shStatus("지금은 필터에 걸리는 자극 이슈가 적어요 — 잠시 후 다시 시도하거나, 아래 AI 추천/직접 입력을 이용하세요", true);
+          return;
+        }
+        renderHot(items.slice(0, 20));
+        shStatus("✓ 한국 화제 이슈 " + Math.min(items.length, 20) + "개 (자극 필터 적용) — 하나 누르면 그 소재로 썰을 만들어요");
+      })
+      ["catch"](function () {
+        shStatus("이슈를 가져오지 못했어요 — 프록시가 불안정할 수 있어요. 잠시 후 다시 시도하거나, 아래 AI 추천/직접 입력을 이용하세요", true);
+      })
+      .then(function () { recBusy = false; setTrendLoading(false); });
   }
 
   function runRecommend() {
