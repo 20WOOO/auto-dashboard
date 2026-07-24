@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>자동화 대시보드</title>
 <meta name="description" content="날씨·주식 자동화를 프로젝트 탭으로 나누고 단계별 시작 버튼으로 실행하는 대시보드">
-<meta name="app-version" content="17">
+<meta name="app-version" content="19">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -322,6 +322,17 @@
   .story-card.sel .sc-pick { display: block; }
   .rec-wrap { margin-top: 12px; }
   .rec-btn { min-height: 46px; font-size: 14.5px; }
+  .rec-btn2 {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; min-height: 40px; margin-top: 7px;
+    border: 1px solid var(--hairline); border-radius: 11px; background: none; color: var(--ink-2);
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .rec-btn2:hover { border-color: var(--accent); color: var(--accent); }
+  .rec-btn2:disabled { opacity: 0.55; cursor: default; }
+  .rec-btn2 .spinner { display: none; }
+  .rec-btn2.loading .spinner { display: inline-block; border-top-color: var(--accent); border-color: var(--hairline); }
+  .trend-card a { position: relative; z-index: 2; }
   .rec-card { position: relative; }
   .rec-card .sc-pick { color: var(--accent); }
   #sh-topics { margin-top: 2px; }
@@ -440,7 +451,7 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v17</span></h1>
+    <h1>⚡ 자동화 대시보드 <span class="ver" id="app-ver">v19</span></h1>
     <p>프로젝트 탭을 고르고, 각 단계의 시작 버튼을 누르세요</p>
   </header>
 
@@ -659,8 +670,11 @@
     <div class="status" id="sh-status">키워드를 넣고 1단계 시작을 누르세요 · 모든 썰은 픽션으로 생성됩니다</div>
 
     <div class="rec-wrap">
-      <button class="step-start rec-btn" id="sh-rec-btn" type="button">
-        <span class="spinner" aria-hidden="true"></span><span class="lbl">🔥 요즘 핫한 자극 주제 10개 추천받기</span>
+      <button class="step-start rec-btn" id="sh-trend-btn" type="button">
+        <span class="spinner" aria-hidden="true"></span><span class="lbl">🔴 한국 화제 이슈 가져오기 (자극 필터)</span>
+      </button>
+      <button class="rec-btn2" id="sh-rec-btn" type="button">
+        <span class="spinner" aria-hidden="true"></span><span class="lbl">🔥 또는 AI 자극 주제 추천 (실시간 아님)</span>
       </button>
       <div class="gen-live" id="shlive0" hidden>
         <div class="gl-head"><span class="gl-dot"></span><span id="shlivemeta0">실시간 생성 중…</span></div>
@@ -2490,6 +2504,65 @@
     el("shmanual0").hidden = true;
     shStatus("✓ 추천 주제 10개 — 마음에 드는 걸 누르면 그 주제로 썰 5개를 만들어요");
   }
+  // ── 한국 화제 이슈 (실시간 뉴스 + 자극 필터) ──
+  // 순수 커뮤니티(네이트판/디시 등)는 공개 피드가 없어 불안정 → 한국 언론·네이버에 걸리는
+  // 화제 이슈를 가져와 자극 키워드로 직접 필터링한다(정치·증시·날씨·스포츠는 제외).
+  var SENS_KEEP = ["논란", "충격", "폭로", "갑질", "불륜", "이혼", "파경", "결별", "열애", "실형", "구속", "폭행", "사망", "숨져", "자백", "막장", "경악", "소름", "분노", "오열", "배신", "사기", "학폭", "왕따", "몰카", "유출", "반전", "발칵", "파문", "폭언", "협박", "스토킹", "잠적", "파혼", "바람", "내연", "상간", "시댁", "며느리", "시어머니", "고부", "층간소음", "주작", "사연", "가출", "외도", "패륜", "친자", "상속", "보복", "복수", "갑질", "왕따", "가스라이팅", "데이트폭력"];
+  var SENS_DROP = ["코스피", "코스닥", "증시", "환율", "금리", "국채", "수출", "무역수지", "날씨", "기온", "미세먼지", "강수", "국회", "여야", "대통령", "예산안", "법안", "경선", "공천", "선발", "라인업", "무승부", "시구", "MVP", "리그", "확진", "백신", "부동산 시황", "코인 시세"];
+  var GNEWS_HOT = "https://news.google.com/rss/search?q=" +
+    encodeURIComponent("논란 OR 충격 OR 폭로 OR 갑질 OR 불륜 OR 이혼 OR 실형 OR 폭행 OR 열애 OR 결별 OR 막장 OR 학폭 OR 사연 OR 내연 OR 패륜 OR 층간소음") +
+    "&hl=ko&gl=KR&ceid=KR:ko";
+  function renderHot(items) {
+    el("sh-topics").innerHTML = items.map(function (t) {
+      return '<div class="story-card rec-card trend-card" data-kw="' + esc(t.title) + '">' +
+        '<div class="sc-title">🔴 ' + esc(t.title) + "</div>" +
+        '<div class="sc-sum">' + esc(t.source || "뉴스") + (t.date ? " · " + esc(relTime(t.date)) : "") + "</div>" +
+        '<div class="sc-pick" style="display:block">이 소재로 썰 5개 만들기 →' +
+          (t.link ? '  <a href="' + esc(t.link) + '" target="_blank" rel="noopener">기사 ↗</a>' : "") + "</div></div>";
+    }).join("");
+    Array.prototype.forEach.call(el("sh-topics").querySelectorAll(".trend-card"), function (b) {
+      b.addEventListener("click", function (e) {
+        if (e.target && e.target.tagName === "A") return;
+        el("sh-kw").value = b.getAttribute("data-kw");
+        runSh1();
+        try { el("shnode1").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e2) {}
+      });
+    });
+  }
+  function setTrendLoading(on) {
+    var b = el("sh-trend-btn");
+    b.disabled = on; b.classList.toggle("loading", on);
+    b.querySelector(".lbl").textContent = on ? "가져오는 중…" : "🔴 한국 화제 이슈 가져오기 (자극 필터)";
+  }
+  function runHotIssues() {
+    if (recBusy) return;
+    recBusy = true; setTrendLoading(true);
+    el("shmanual0").hidden = true; el("shlive0").hidden = true;
+    shStatus("한국 화제 이슈를 가져와 자극 필터를 적용하는 중…");
+    viaProxy(GNEWS_HOT, true).then(function (xml) {
+      var doc = new DOMParser().parseFromString(xml, "text/xml");
+      var seen = {}, items = [];
+      Array.prototype.slice.call(doc.querySelectorAll("item")).forEach(function (it) {
+        function tx(tag) { var e = it.querySelector(tag); return e ? e.textContent : ""; }
+        var title = tx("title"), src = tx("source");
+        if (src && title.length > (" - " + src).length && title.slice(-(" - " + src).length) === " - " + src)
+          title = title.slice(0, -(" - " + src).length);
+        title = title.trim();
+        if (!title) return;
+        if (SENS_DROP.some(function (k) { return title.indexOf(k) >= 0; })) return;
+        if (!SENS_KEEP.some(function (k) { return title.indexOf(k) >= 0; })) return;
+        var key = title.slice(0, 18);
+        if (seen[key]) return; seen[key] = 1;
+        items.push({ title: title, link: tx("link"), source: src, date: tx("pubDate") });
+      });
+      if (!items.length) throw new Error("no items");
+      renderHot(items.slice(0, 20));
+      shStatus("✓ 한국 화제 이슈 " + Math.min(items.length, 20) + "개 (자극 필터 적용) — 하나 누르면 그 소재로 썰을 만들어요");
+    })["catch"](function () {
+      shStatus("이슈를 가져오지 못했어요 — 잠시 후 다시 시도하거나, 아래 AI 추천/직접 입력을 이용하세요", true);
+    }).then(function () { recBusy = false; setTrendLoading(false); });
+  }
+
   function runRecommend() {
     if (recBusy) return;
     var user = buildP0();
@@ -3176,6 +3249,7 @@
   el("sh-kw").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); runSh1(); }
   });
+  el("sh-trend-btn").addEventListener("click", runHotIssues);
   el("sh-rec-btn").addEventListener("click", runRecommend);
   el("shcopy0").addEventListener("click", function () { copyText(recPending || "", this); });
   el("shapply0").addEventListener("click", function () {
